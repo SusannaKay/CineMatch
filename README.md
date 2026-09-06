@@ -1,72 +1,97 @@
 # 🎬 CineMatch
 
-> **Stop arguing about what to watch. Swipe, match, and start the movie night. 🍿**
+> **Stop arguing about what to watch. Swipe, save, and find something you'll actually want to watch. 🍿**
 
-CineMatch is a Tinder-style web app for discovering **movies, TV shows, and anime**. Swipe through a curated deck of titles and, in multiplayer mode, find the titles that **everyone in the group likes**.
+CineMatch is a Tinder-style web app for discovering **movies, TV shows, and anime**. It combines personalized discovery, title-based recommendations, a personal watchlist, and real-time multiplayer matching.
 
 It is designed for one simple problem: *"What should we watch tonight?"*
 
 ## ✨ Features
 
-- 🎞️ **Swipe-based discovery** — like or skip titles with a simple Tinder-style interface.
-- 👤 **Solo mode** — browse a personalized deck on your own.
+- 🎞️ **Solo discovery** — configure your tastes and swipe through a personalized deck.
+- 💚 **Like = Watchlist** — every title you like in Solo is automatically saved.
+- ✨ **Suggestion mode** — search for a movie or TV show you love and get a list of similar titles, without entering swipe mode.
+- 🔖 **Watchlist** — keep, inspect, and remove titles you've saved across sessions.
 - 👥 **Multiplayer mode** — create a room and invite friends with a room code.
-- 💚 **Group matching** — when everyone votes, CineMatch finds the titles everyone liked.
-- 🎯 **Filters** — narrow the deck by content type, genre, language, era, runtime, and streaming platform.
-- 🔎 **Search** — search for movies and TV shows directly through TMDB.
+- 🎯 **Group matching** — when everyone votes, CineMatch finds the titles that everyone liked.
+- 🧩 **Filters** — narrow discovery by content type, genre, language, era, runtime, and streaming platform.
+- 🔎 **TMDB search** — search for movies and TV shows as the starting point for recommendations.
 - 📺 **Streaming information** — when available, titles include Italian streaming providers.
-- ▶️ **Trailers** — available trailers can be opened directly from title details.
-- ⏱️ **Vote timeout** — inactive players are automatically treated as skipping a title after the configured timeout.
-- 📱 **LAN support** — the app exposes its local network address, making it easy to play together from phones on the same Wi-Fi network.
-- 🧪 **Mock data mode** — the app can run without a TMDB API key using local demo data.
+- ▶️ **Trailers** — available trailers can be opened from title details.
+- ⏱️ **Vote timeout** — inactive multiplayer players are automatically treated as skipping a title.
+- 📱 **LAN support** — play together from phones connected to the same Wi-Fi network.
+- 🧪 **Mock data mode** — run the app without a TMDB API key using local demo data.
 
 ## 🖥️ How It Works
 
 ### Solo
 
-1. Choose what you want to watch.
+1. Choose **Solo** from the bottom navigation.
 2. Configure your filters.
 3. Swipe through the generated deck.
-4. Discover your matches.
+4. Swipe right or press **Mi piace** to save a title automatically to your Watchlist.
+5. Open the Watchlist whenever you want to review your saved titles.
+
+### Suggestion
+
+1. Choose **Suggestion** from the bottom navigation.
+2. Search for a movie or TV show you already love.
+3. Select it as your starting point.
+4. CineMatch fetches similar titles from TMDB.
+5. Save individual recommendations to your Watchlist.
+
+Suggestion mode is intentionally separate from Solo discovery: **recommendations are presented directly as a list rather than as another swipe session.**
 
 ### Multiplayer
 
-1. One player creates a room.
-2. Friends join using the room code.
-3. The host chooses the filters and starts the session.
-4. Everyone votes independently on the same titles.
-5. When all players have voted, CineMatch moves to the next title.
-6. At the end, the group gets the titles that received a **like from everyone**.
+1. Choose **Multiplayer** from the bottom navigation.
+2. One player creates a room.
+3. Friends join using the room code.
+4. The host chooses the filters and starts the session.
+5. Everyone votes independently on the same titles.
+6. When all players have voted, CineMatch moves to the next title.
+7. At the end, the group gets the titles that received a **like from everyone**.
 
 Rooms support up to **8 players** and automatically expire after a period of inactivity.
 
+### Watchlist
+
+The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time.
+
 ## 🏗️ Architecture
 
-CineMatch uses a lightweight Node.js backend that serves the frontend and manages real-time multiplayer sessions.
+CineMatch uses a lightweight Node.js backend that serves the frontend, proxies TMDB requests, and manages real-time multiplayer sessions.
 
 ```text
-                         ┌──────────────────┐
-                         │     Browser      │
-                         │  HTML / CSS / JS │
-                         └────────┬─────────┘
-                                  │
-                         HTTP + Socket.IO
-                                  │
-                         ┌────────▼─────────┐
-                         │   Express /      │
-                         │   Node.js Server │
-                         └──────┬─────┬──────┘
-                                │     │
-                    ┌───────────┘     └────────────┐
-                    │                              │
-             ┌──────▼──────┐                ┌──────▼──────┐
-             │ RoomManager │                │ TMDB Service│
-             │   + Rooms   │                │             │
-             └─────────────┘                └──────┬──────┘
-                                                    │
-                                             ┌──────▼──────┐
-                                             │  TMDB API   │
-                                             └─────────────┘
+                         ┌──────────────────────┐
+                         │       Browser        │
+                         │    HTML / CSS / JS   │
+                         └──────────┬───────────┘
+                                    │
+                              HTTP + Socket.IO
+                                    │
+                         ┌──────────▼───────────┐
+                         │ Express / Node.js    │
+                         │     Server           │
+                         └──────┬────────┬──────┘
+                                │        │
+                 ┌──────────────┘        └──────────────┐
+                 │                                      │
+          ┌──────▼──────┐                       ┌───────▼────────┐
+          │ RoomManager │                       │   TMDB Service │
+          │   + Rooms   │                       │                │
+          └─────────────┘                       └───────┬────────┘
+                                                        │
+                                                 ┌──────▼──────┐
+                                                 │   TMDB API  │
+                                                 └─────────────┘
+
+        Browser-only persistence
+                 │
+          ┌──────▼──────┐
+          │  Watchlist  │
+          │ localStorage│
+          └─────────────┘
 ```
 
 ### Main components
@@ -74,7 +99,8 @@ CineMatch uses a lightweight Node.js backend that serves the frontend and manage
 - **Express** serves the static frontend and exposes HTTP endpoints.
 - **Socket.IO** handles room state, player connections, voting, and real-time synchronization.
 - **RoomManager** manages multiplayer rooms and their lifecycle.
-- **TMDB service** builds the movie/TV deck and enriches titles with providers and trailers.
+- **TMDB service** builds discovery decks, searches titles, fetches recommendations, and enriches titles with providers and trailers.
+- **Watchlist module** stores saved titles locally in the browser.
 - **Mock data** provides a local fallback when TMDB is not configured.
 
 ## 🛠️ Tech Stack
@@ -84,12 +110,11 @@ CineMatch uses a lightweight Node.js backend that serves the frontend and manage
 | **Node.js** | Runtime |
 | **Express** | HTTP server and static file serving |
 | **Socket.IO** | Real-time multiplayer communication |
-| **TMDB API** | Movie and TV data, search, providers and trailers |
+| **TMDB API** | Movie/TV data, search, recommendations, providers and trailers |
 | **JavaScript (ES Modules)** | Application logic |
 | **HTML / CSS / JavaScript** | Frontend |
+| **localStorage** | Local Watchlist persistence |
 | **dotenv** | Environment variable management |
-
-The server currently requires **Node.js 18+**. fileciteturn0file0
 
 ## 🚀 Getting Started
 
@@ -122,7 +147,7 @@ TMDB_API_KEY=your_tmdb_api_key
 USE_MOCK_DATA=false
 ```
 
-If `TMDB_API_KEY` is missing, CineMatch automatically falls back to mock data. fileciteturn2file0
+If `TMDB_API_KEY` is missing, CineMatch automatically falls back to mock data.
 
 ### 4. Start the development server
 
@@ -154,7 +179,7 @@ Rete: http://192.168.1.42:3000
 
 Open that address from your phone or another device connected to the same Wi-Fi network.
 
-## 🔌 API
+## 🔌 HTTP API
 
 ### `GET /api/config`
 
@@ -164,11 +189,13 @@ Returns basic runtime configuration, including whether mock data is enabled and 
 
 Searches TMDB for movies and TV shows matching the query.
 
-Example:
+### `GET /api/recommendations?id=<id>&mediaType=<movie|tv>`
 
-```text
-GET /api/search?q=interstellar
-```
+Returns similar titles for a selected movie or TV show. This powers Suggestion mode while keeping the TMDB API key on the server.
+
+### `POST /api/discover`
+
+Builds a personalized discovery deck from the selected filters. This powers Solo mode.
 
 ## 🎮 Multiplayer Events
 
@@ -188,7 +215,7 @@ Multiplayer communication is handled through Socket.IO.
 
 ## ⚙️ Configuration
 
-The current server configuration includes:
+The main server configuration includes:
 
 - **Port:** `3000` by default
 - **Maximum players:** `8`
@@ -196,8 +223,6 @@ The current server configuration includes:
 - **Vote timeout:** `45 seconds`
 - **Deck size:** `20 titles`
 - **Mock data:** enabled automatically when no TMDB API key is available
-
-These values are defined in the server configuration. fileciteturn2file0
 
 ## 🔐 Environment Variables
 
@@ -219,7 +244,7 @@ Some ideas for future iterations:
 - [ ] Additional streaming providers and regions
 - [ ] Improved mobile UX / PWA support
 - [ ] Persistent multiplayer rooms
-- [ ] Watchlist and saved matches
+- [ ] Cross-device Watchlist sync
 - [ ] Session history
 
 ## 🤝 Contributing
