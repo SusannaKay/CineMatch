@@ -128,4 +128,18 @@ export async function searchMulti(query) {
     }));
 }
 
+export async function getRecommendations(id, mediaType) {
+  const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+
+  if (config.useMockData) {
+    return mockMovies
+      .filter((movie) => String(movie.id) !== String(id))
+      .slice(0, 6);
+  }
+
+  const data = await tmdbFetch(`/${endpoint}/${id}/recommendations?page=1`);
+  const valid = (data.results || []).filter((movie) => movie.poster_path).slice(0, 12);
+  return Promise.all(valid.map((movie) => enrichMovie(movie, endpoint)));
+}
+
 export { config as tmdbConfig };
