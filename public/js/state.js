@@ -7,30 +7,15 @@ export const appState = {
   lanAddresses: [],
   port: null,
   prefillRoomCode: '',
-  filtersDraft: {
-    type: '',
-    platforms: [],
-    language: '',
-    genre: [],
-    genreMode: 'include',
-    era: '',
-    length: '',
-  },
+  soloMovies: [],
+  filtersDraft: { type: '', platforms: [], language: '', genre: [], genreMode: 'include', era: '', length: '' },
   filterStep: 0,
   showAllGenres: false,
   tempSelections: [],
 };
 
 export function resetFiltersDraft() {
-  appState.filtersDraft = {
-    type: '',
-    platforms: [],
-    language: '',
-    genre: [],
-    genreMode: 'include',
-    era: '',
-    length: '',
-  };
+  appState.filtersDraft = { type: '', platforms: [], language: '', genre: [], genreMode: 'include', era: '', length: '' };
   appState.filterStep = 0;
   appState.showAllGenres = false;
 }
