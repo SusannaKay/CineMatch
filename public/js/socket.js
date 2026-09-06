@@ -66,4 +66,13 @@ export async function fetchConfig() {
   const res = await fetch('/api/config');
   const data = await res.json();
   appState.useMockData = data.useMockData;
+  appState.lanAddresses = data.lanAddresses || [];
+  appState.port = data.port || window.location.port;
+}
+
+export function getJoinUrl(roomCode) {
+  const ip = appState.lanAddresses[0] || window.location.hostname;
+  const port = appState.port || window.location.port;
+  const portPart = port ? `:${port}` : '';
+  return `http://${ip}${portPart}/?room=${roomCode}`;
 }

@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { networkInterfaces } from 'os';
 import { Server } from 'socket.io';
 import { config } from './config.js';
 import { RoomManager } from './rooms/RoomManager.js';
@@ -17,8 +18,23 @@ const rooms = new RoomManager();
 
 app.use(express.static(publicDir));
 
+function getLanAddresses() {
+  const nets = networkInterfaces();
+  const addrs = [];
+  for (const iface of Object.values(nets)) {
+    for (const net of iface ?? []) {
+      if (net.family === 'IPv4' && !net.internal) addrs.push(net.address);
+    }
+  }
+  return addrs;
+}
+
 app.get('/api/config', (_req, res) => {
-  res.json({ useMockData: tmdbConfig.useMockData });
+  res.json({
+    useMockData: tmdbConfig.useMockData,
+    port: config.port,
+    lanAddresses: getLanAddresses(),
+  });
 });
 
 app.get('/api/search', async (req, res) => {
@@ -222,19 +238,6 @@ io.on('connection', (socket) => {
 });
 
 setInterval(() => rooms.cleanupExpired(), 10 * 60 * 1000);
-
-import { networkInterfaces } from 'os';
-
-function getLanAddresses() {
-  const nets = networkInterfaces();
-  const addrs = [];
-  for (const iface of Object.values(nets)) {
-    for (const net of iface ?? []) {
-      if (net.family === 'IPv4' && !net.internal) addrs.push(net.address);
-    }
-  }
-  return addrs;
-}
 
 httpServer.listen(config.port, '0.0.0.0', () => {
   console.log(`\nCineMatch avviato`);

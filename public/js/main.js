@@ -71,6 +71,14 @@ async function init() {
     render();
   });
 
+  const params = new URLSearchParams(window.location.search);
+  const roomFromQr = params.get('room');
+  if (roomFromQr) {
+    appState.prefillRoomCode = roomFromQr.toUpperCase().slice(0, 4);
+    navigate('join');
+    return;
+  }
+
   renderWelcome(navigate);
 }
 

@@ -4,6 +4,9 @@ export const appState = {
   room: null,
   playerName: '',
   localVoteCast: false,
+  lanAddresses: [],
+  port: null,
+  prefillRoomCode: '',
   filtersDraft: {
     type: '',
     platforms: [],

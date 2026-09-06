@@ -71,7 +71,15 @@ export function renderJoin(onNavigate) {
   const nameInput = screen.querySelector('#input-name-join');
   nameInput.value = appState.playerName || localStorage.getItem('cinematch_nickname') || '';
 
-  screen.querySelector('#input-code').addEventListener('input', (e) => {
+  const codeInput = screen.querySelector('#input-code');
+  if (appState.prefillRoomCode) {
+    codeInput.value = appState.prefillRoomCode;
+    appState.prefillRoomCode = '';
+    // Il codice arriva già dal QR: porta il focus dritto sul nickname.
+    setTimeout(() => nameInput.focus(), 50);
+  }
+
+  codeInput.addEventListener('input', (e) => {
     e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   });
 

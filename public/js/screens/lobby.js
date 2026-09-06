@@ -1,5 +1,5 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
-import { leaveRoom, setFilters, startSession } from '../socket.js';
+import { leaveRoom, setFilters, startSession, getJoinUrl, showToast } from '../socket.js';
 import { renderFilters } from './filters.js';
 
 function playerChips(players, hostId) {
@@ -22,6 +22,18 @@ export function renderLobby(room, onNavigate) {
         <div class="room-code">${room.id}</div>
         <p class="text-slate-400 text-sm mt-3">Condividi questo codice con gli amici sulla stessa rete Wi‑Fi.</p>
       </div>
+
+      ${isHost ? `
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 mb-6 flex flex-col items-center">
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+            <i class="fa-solid fa-qrcode text-primary mr-1"></i>Inquadra per entrare
+          </p>
+          <div id="qr-box" class="bg-white p-2 rounded-xl"></div>
+          <button id="btn-copy-link" class="mt-3 text-xs text-slate-400 hover:text-white flex items-center gap-1">
+            <i class="fa-solid fa-link"></i> Copia link diretto
+          </button>
+        </div>
+      ` : ''}
 
       <div class="mb-6">
         <p class="text-sm font-bold text-slate-400 mb-3">In stanza (${room.players.length})</p>
@@ -68,6 +80,30 @@ export function renderLobby(room, onNavigate) {
   if (isHost) {
     document.getElementById('btn-configure').onclick = () => onNavigate('filters');
     document.getElementById('btn-start').onclick = () => startSession();
+
+    const joinUrl = getJoinUrl(room.id);
+    const qrBox = document.getElementById('qr-box');
+    if (qrBox && window.QRCode) {
+      // eslint-disable-next-line no-new
+      new QRCode(qrBox, {
+        text: joinUrl,
+        width: 150,
+        height: 150,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+      });
+    } else if (qrBox) {
+      qrBox.innerHTML = `<p class="text-slate-800 text-xs p-4 max-w-[150px]">QR non disponibile: usa il codice o il link.</p>`;
+    }
+
+    document.getElementById('btn-copy-link').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(joinUrl);
+        showToast('Link copiato negli appunti!');
+      } catch {
+        showToast(joinUrl);
+      }
+    };
   }
 }
 
