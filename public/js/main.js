@@ -1,0 +1,77 @@
+import { fetchConfig, getSocket, onRoomState } from './socket.js';
+import { appState, resetFiltersDraft } from './state.js';
+import { renderWelcome, renderJoin } from './screens/welcome.js';
+import { renderLobby, renderLoading } from './screens/lobby.js';
+import { renderFilters } from './screens/filters.js';
+import { renderSwipe } from './screens/swipe.js';
+import { renderResults } from './screens/results.js';
+import './screens/details.js';
+
+let currentScreen = 'welcome';
+
+function navigate(screen) {
+  currentScreen = screen;
+  render();
+}
+
+function render() {
+  const room = appState.room;
+
+  if (currentScreen === 'welcome') {
+    renderWelcome(navigate);
+    return;
+  }
+  if (currentScreen === 'join') {
+    renderJoin(navigate);
+    return;
+  }
+  if (currentScreen === 'filters') {
+    renderFilters(navigate);
+    return;
+  }
+
+  if (!room) {
+    currentScreen = 'welcome';
+    renderWelcome(navigate);
+    return;
+  }
+
+  switch (room.status) {
+    case 'lobby':
+      currentScreen = 'lobby';
+      renderLobby(room, navigate);
+      break;
+    case 'loading':
+      renderLoading(room);
+      break;
+    case 'swiping':
+      renderSwipe(room);
+      break;
+    case 'results':
+      renderResults(room, navigate);
+      break;
+    default:
+      renderLobby(room, navigate);
+  }
+}
+
+async function init() {
+  await fetchConfig();
+  getSocket();
+  onRoomState((room) => {
+    if (room.status === 'lobby' && currentScreen !== 'filters') {
+      currentScreen = 'lobby';
+    }
+    if (room.status === 'results') {
+      currentScreen = 'results';
+    }
+    if (room.filters && room.isHost) {
+      appState.filtersDraft = { ...room.filters };
+    }
+    render();
+  });
+
+  renderWelcome(navigate);
+}
+
+init();

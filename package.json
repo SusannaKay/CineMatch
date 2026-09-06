@@ -1,0 +1,19 @@
+{
+  "name": "cinematch",
+  "version": "1.0.0",
+  "description": "Trova il film perfetto — da solo o in gruppo",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
