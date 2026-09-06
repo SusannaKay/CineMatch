@@ -33,10 +33,10 @@ export function renderSolo(moviesList, onNavigate) {
   screen.querySelector('#solo-nope').onclick = () => vote(false, onNavigate);
   screen.querySelector('#solo-like').onclick = () => vote(true, onNavigate);
   screen.querySelector('#solo-details').onclick = () => { if (movies[index]) openDetails(movies[index]); };
-  renderCard(screen);
+  renderCard(screen, onNavigate);
 }
 
-function renderCard(screen) {
+function renderCard(screen, onNavigate) {
   const container = screen.querySelector('#solo-card-container');
   const movie = movies[index];
   screen.querySelector('#solo-progress').textContent = movies.length ? `${index + 1} / ${movies.length}` : '0 titoli';
@@ -46,7 +46,7 @@ function renderCard(screen) {
   const card = document.createElement('div'); card.className = 'movie-card shadow-2xl'; card.style.backgroundImage = `url('${movie.poster_path}')`;
   card.innerHTML = `<div class="badge badge-like">SÌ</div><div class="badge badge-nope">NO</div><div class="card-overlay"><h2 class="text-3xl font-extrabold leading-tight">${escapeHTML(movie.title)}</h2><div class="flex items-center text-sm font-semibold gap-3 text-slate-300 mt-2"><span>📅 ${movie.release_date?.substring(0,4)||'N/A'}</span><span>⭐ ${movie.vote_average}</span></div></div>`;
   container.appendChild(card);
-  setupSwipe(card, movie, screen);
+  setupSwipe(card, movie, screen, onNavigate);
 }
 
 function vote(like, onNavigate) {
@@ -54,13 +54,13 @@ function vote(like, onNavigate) {
   if (like) { addToWatchlist(movie); showToast('Salvato nella Watchlist'); }
   index++;
   if (index >= movies.length) { showToast('Hai finito questa sessione'); onNavigate('watchlist'); return; }
-  renderCard(document.getElementById('screen-solo'));
+  renderCard(document.getElementById('screen-solo'), onNavigate);
 }
 
-function setupSwipe(card, movie, screen) {
+function setupSwipe(card, movie, screen, onNavigate) {
   if (handlers) handlers();
   let sx=0, sy=0, cx=0, cy=0, dragging=false;
-  const end=()=>{ if(!dragging)return; dragging=false; card.style.transition='transform .3s ease, opacity .3s ease'; if(cy < -100 && Math.abs(cx)<100){ card.style.transform='translate(0,0)'; openDetails(movie); } else if(cx>100) vote(true, ()=>{}); else if(cx<-100) vote(false, ()=>{}); else card.style.transform='translate(0,0)'; cx=cy=0; };
+  const end=()=>{ if(!dragging)return; dragging=false; card.style.transition='transform .3s ease, opacity .3s ease'; if(cy < -100 && Math.abs(cx)<100){ card.style.transform='translate(0,0)'; openDetails(movie); } else if(cx>100) vote(true, onNavigate); else if(cx<-100) vote(false, onNavigate); else card.style.transform='translate(0,0)'; cx=cy=0; };
   const start=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;dragging=true;card.style.transition='none';};
   const move=e=>{if(!dragging)return;cx=e.touches[0].clientX-sx;cy=e.touches[0].clientY-sy;card.style.transform=`translate(${cx}px,${cy}px) rotate(${cx*.05}deg)`;};
   card.addEventListener('touchstart',start); card.addEventListener('touchmove',move); card.addEventListener('touchend',end);
