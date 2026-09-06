@@ -3,6 +3,11 @@ import { appState } from '../state.js';
 import { setFilters } from '../socket.js';
 import { buildQuestionnaire } from '../data/questionnaire.js';
 
+// Ricorda l'ultimo step renderizzato: serve a distinguere "sono passato a una
+// nuova domanda" (va ripartire da capo) da "ho solo toccato Escludi / Mostra
+// tutti sulla stessa domanda" (le selezioni non confermate vanno mantenute).
+let lastRenderedStep = -1;
+
 export function renderFilters(onNavigate) {
   const { filtersDraft: answers, filterStep, showAllGenres } = appState;
   const qList = buildQuestionnaire(answers, showAllGenres);
@@ -41,7 +46,16 @@ export function renderFilters(onNavigate) {
     };
   }
 
-  appState.tempSelections = q.multiSelect ? [...(answers[q.id] || [])] : [];
+  // Reset delle selezioni solo se siamo arrivati su una domanda diversa.
+  // Se invece stiamo ri-renderizzando la STESSA domanda (es. dopo aver
+  // toccato "Escludi" o "Mostra tutti i generi"), le selezioni già fatte
+  // ma non ancora confermate vanno mantenute.
+  if (lastRenderedStep !== filterStep) {
+    appState.tempSelections = q.multiSelect ? [...(answers[q.id] || [])] : [];
+    lastRenderedStep = filterStep;
+  } else if (!q.multiSelect) {
+    appState.tempSelections = [];
+  }
 
   q.options.forEach((opt) => {
     const btn = document.createElement('button');

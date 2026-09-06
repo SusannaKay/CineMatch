@@ -1,68 +1,122 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
-import { castVote } from '../socket.js';
+import { castVote, showToast } from '../socket.js';
 import { openDetails } from './details.js';
 
 let swipeHandlers = null;
+
+// Stato "di sessione" del render, per capire cosa è davvero cambiato tra
+// una room:state e la successiva, senza dover ricostruire tutto lo schermo
+// ad ogni singolo voto altrui.
+let renderedIndex = null;      // ultimo currentIndex per cui abbiamo creato una carta
+let countdownInterval = null;  // interval del countdown, vive quanto lo schermo
+let voteDeadline = null;       // aggiornato ad ogni render, letto dall'interval
 
 export function renderSwipe(room) {
   const movie = room.currentMovie;
   const { voted, total } = room.voteStatus;
   const progress = room.deckLength ? `${room.currentIndex + 1} / ${room.deckLength}` : '';
+  voteDeadline = room.voteDeadline;
 
-  mountScreen('screen-swipe', `
-    <div class="flex-grow flex flex-col overflow-hidden">
-      <div class="px-4 py-3 flex justify-between items-center flex-shrink-0 border-b border-slate-800">
-        <span class="text-sm font-bold text-slate-400">${progress}</span>
-        <div class="vote-progress" id="vote-dots"></div>
-      </div>
+  let screen = document.getElementById('screen-swipe');
+  const isFirstMount = !screen;
 
-      <div id="cards-container"></div>
+  if (isFirstMount) {
+    screen = mountScreen('screen-swipe', `
+      <div class="flex-grow flex flex-col overflow-hidden">
+        <div class="px-4 py-3 flex justify-between items-center flex-shrink-0 border-b border-slate-800">
+          <span class="text-sm font-bold text-slate-400" id="progress-text"></span>
+          <span class="text-xs font-bold text-slate-500" id="vote-countdown"></span>
+          <div class="vote-progress" id="vote-dots"></div>
+        </div>
 
-      <div id="waiting-bar" class="hidden text-center py-3 text-sm text-slate-400 border-t border-slate-800">
-        <i class="fa-solid fa-hourglass-half mr-1"></i> In attesa degli altri… (${voted}/${total})
-      </div>
+        <div id="cards-container"></div>
 
-      <div id="action-bar" class="text-center pb-8 pt-2 px-6 flex-shrink-0">
-        <div class="flex justify-between items-center bg-[#1e293b] border border-indigo-500/40 rounded-2xl w-full max-w-[300px] mx-auto px-2 py-1">
-          <button id="btn-nope" class="flex flex-col items-center py-2 w-1/3 text-slate-400 hover:text-white active:scale-90 transition-all">
-            <i class="fa-solid fa-xmark text-lg mb-1"></i><span class="text-xs font-medium">Nope</span>
-          </button>
-          <button id="btn-details" class="flex flex-col items-center py-2 w-1/3 text-rose-500 hover:text-rose-400 active:scale-90 transition-all relative">
-            <div class="absolute left-0 top-1/4 h-1/2 w-px bg-slate-700"></div>
-            <div class="absolute right-0 top-1/4 h-1/2 w-px bg-slate-700"></div>
-            <i class="fa-solid fa-info text-lg mb-1"></i><span class="text-xs font-medium">Dettagli</span>
-          </button>
-          <button id="btn-like" class="flex flex-col items-center py-2 w-1/3 text-emerald-500 hover:text-emerald-400 active:scale-90 transition-all">
-            <i class="fa-solid fa-heart text-lg mb-1"></i><span class="text-xs font-medium">Mi piace</span>
-          </button>
+        <div id="waiting-bar" class="hidden text-center py-3 text-sm text-slate-400 border-t border-slate-800">
+          <i class="fa-solid fa-hourglass-half mr-1"></i> In attesa degli altri… (<span id="waiting-count"></span>)
+        </div>
+
+        <div id="action-bar" class="text-center pb-8 pt-2 px-6 flex-shrink-0">
+          <div class="flex justify-between items-center bg-[#1e293b] border border-indigo-500/40 rounded-2xl w-full max-w-[300px] mx-auto px-2 py-1">
+            <button id="btn-nope" class="flex flex-col items-center py-2 w-1/3 text-slate-400 hover:text-white active:scale-90 transition-all">
+              <i class="fa-solid fa-xmark text-lg mb-1"></i><span class="text-xs font-medium">Nope</span>
+            </button>
+            <button id="btn-details" class="flex flex-col items-center py-2 w-1/3 text-rose-500 hover:text-rose-400 active:scale-90 transition-all relative">
+              <div class="absolute left-0 top-1/4 h-1/2 w-px bg-slate-700"></div>
+              <div class="absolute right-0 top-1/4 h-1/2 w-px bg-slate-700"></div>
+              <i class="fa-solid fa-info text-lg mb-1"></i><span class="text-xs font-medium">Dettagli</span>
+            </button>
+            <button id="btn-like" class="flex flex-col items-center py-2 w-1/3 text-emerald-500 hover:text-emerald-400 active:scale-90 transition-all">
+              <i class="fa-solid fa-heart text-lg mb-1"></i><span class="text-xs font-medium">Mi piace</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  `);
+    `);
+
+    document.getElementById('btn-like').onclick = () => submitVote('like');
+    document.getElementById('btn-nope').onclick = () => submitVote('nope');
+
+    renderedIndex = null; // forza la creazione della prima carta qui sotto
+    startCountdown();
+  }
 
   setHeaderBadge(`Stanza ${room.id}`);
+
+  // Se stavi guardando i dettagli e nel frattempo il turno è avanzato
+  // (timeout scaduto o tutti hanno votato mentre eri nel modal), chiudi
+  // il modal e avvisa: senza questo, il modal restava aperto sopra una
+  // carta ormai "vecchia" e non c'era modo di tornare a votare quella nuova.
+  const detailsModal = document.getElementById('details-modal');
+  const detailsWereOpen = detailsModal.classList.contains('active');
+  const roundAdvanced = renderedIndex !== null && room.currentIndex !== renderedIndex;
+  if (detailsWereOpen && roundAdvanced) {
+    detailsModal.classList.remove('active');
+    showToast('Tempo scaduto: si passa al titolo successivo.');
+  }
+
+  document.getElementById('progress-text').textContent = progress;
 
   const dotsEl = document.getElementById('vote-dots');
   dotsEl.innerHTML = Array.from({ length: total }, (_, i) =>
     `<span class="vote-dot ${i < voted ? 'done' : ''}"></span>`
   ).join('');
 
-  if (room.hasVoted) {
-    document.getElementById('action-bar').classList.add('hidden');
-    document.getElementById('waiting-bar').classList.remove('hidden');
-  }
+  const actionBar = document.getElementById('action-bar');
+  const waitingBar = document.getElementById('waiting-bar');
+  document.getElementById('waiting-count').textContent = `${voted}/${total}`;
+  actionBar.classList.toggle('hidden', room.hasVoted);
+  waitingBar.classList.toggle('hidden', !room.hasVoted);
 
-  if (movie && !room.hasVoted) {
-    renderCard(movie);
-  } else if (movie && room.hasVoted) {
-    renderCardStatic(movie);
-  }
-
-  document.getElementById('btn-like').onclick = () => submitVote('like');
-  document.getElementById('btn-nope').onclick = () => submitVote('nope');
   document.getElementById('btn-details').onclick = () => {
     if (movie) openDetails(movie);
   };
+
+  // La carta si ricrea SOLO se siamo su un titolo diverso da quello già
+  // mostrato: un voto altrui che non fa avanzare il turno non deve toccarla.
+  if (movie && room.currentIndex !== renderedIndex) {
+    renderedIndex = room.currentIndex;
+    if (room.hasVoted) renderCardStatic(movie);
+    else renderCard(movie);
+  }
+}
+
+function startCountdown() {
+  clearInterval(countdownInterval);
+  const el = () => document.getElementById('vote-countdown');
+  countdownInterval = setInterval(() => {
+    const target = el();
+    if (!target || !document.getElementById('screen-swipe')) {
+      clearInterval(countdownInterval);
+      return;
+    }
+    if (!voteDeadline) {
+      target.textContent = '';
+      return;
+    }
+    const remaining = Math.max(0, Math.ceil((voteDeadline - Date.now()) / 1000));
+    target.textContent = `⏱ ${remaining}s`;
+    target.classList.toggle('text-rose-400', remaining <= 10);
+  }, 1000);
 }
 
 function renderCard(movie) {

@@ -60,10 +60,12 @@ function clearVoteTimer(room) {
     clearTimeout(room.voteTimer);
     room.voteTimer = null;
   }
+  room.voteDeadline = null;
 }
 
 function startVoteTimer(room) {
   clearVoteTimer(room);
+  room.voteDeadline = Date.now() + config.voteTimeoutSec * 1000;
   room.voteTimer = setTimeout(() => {
     autoAdvance(room);
   }, config.voteTimeoutSec * 1000);
@@ -88,8 +90,8 @@ function advanceOrFinish(room) {
 
   if (hasMore) {
     room.status = 'swiping';
+    startVoteTimer(room); // prima di emitRoom, cosi` il voteDeadline arriva gia` nel primo stato
     emitRoom(room);
-    startVoteTimer(room);
     return;
   }
 
@@ -169,8 +171,8 @@ io.on('connection', (socket) => {
       }
 
       room.status = 'swiping';
+      startVoteTimer(room); // prima di emitRoom, cosi` il voteDeadline arriva gia` nel primo stato
       emitRoom(room);
-      startVoteTimer(room);
     } catch (err) {
       console.error(err);
       room.status = 'lobby';

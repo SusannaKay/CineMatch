@@ -65,7 +65,7 @@ async function init() {
     if (room.status === 'results') {
       currentScreen = 'results';
     }
-    if (room.filters && room.isHost) {
+    if (room.filters && room.isHost && currentScreen !== 'filters') {
       appState.filtersDraft = { ...room.filters };
     }
     render();

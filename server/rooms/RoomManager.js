@@ -23,6 +23,7 @@ export class Room {
     this.votes = new Map();
     this.createdAt = Date.now();
     this.voteTimer = null;
+    this.voteDeadline = null;
     this.colorIndex = 0;
   }
 
@@ -156,6 +157,7 @@ export class Room {
       currentMovie: movie,
       voteStatus,
       hasVoted: this.hasPlayerVoted(socketId),
+      voteDeadline: this.voteDeadline || null,
       results: this.status === 'results' ? this.computeResults() : null,
     };
   }
