@@ -6,7 +6,7 @@ import { networkInterfaces } from 'os';
 import { Server } from 'socket.io';
 import { config } from './config.js';
 import { RoomManager } from './rooms/RoomManager.js';
-import { buildDeck, searchMulti, tmdbConfig } from './services/tmdb.js';
+import { buildDeck, searchMulti, getRecommendations, tmdbConfig } from './services/tmdb.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -45,6 +45,21 @@ app.get('/api/search', async (req, res) => {
     res.json(results);
   } catch {
     res.status(500).json({ error: 'search_failed' });
+  }
+});
+
+app.get('/api/recommendations', async (req, res) => {
+  const id = Number(req.query.id);
+  const mediaType = String(req.query.mediaType || 'movie');
+  if (!Number.isInteger(id) || id <= 0 || !['movie', 'tv'].includes(mediaType)) {
+    return res.status(400).json({ error: 'invalid_title' });
+  }
+  try {
+    const results = await getRecommendations(id, mediaType);
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'recommendations_failed' });
   }
 });
 
@@ -90,7 +105,7 @@ function advanceOrFinish(room) {
 
   if (hasMore) {
     room.status = 'swiping';
-    startVoteTimer(room); // prima di emitRoom, cosi` il voteDeadline arriva gia` nel primo stato
+    startVoteTimer(room);
     emitRoom(room);
     return;
   }
@@ -171,7 +186,7 @@ io.on('connection', (socket) => {
       }
 
       room.status = 'swiping';
-      startVoteTimer(room); // prima di emitRoom, cosi` il voteDeadline arriva gia` nel primo stato
+      startVoteTimer(room);
       emitRoom(room);
     } catch (err) {
       console.error(err);
