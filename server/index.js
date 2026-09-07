@@ -43,9 +43,9 @@ app.get('/api/recommendations', async (req, res) => {
 
 app.post('/api/discover', async (req, res) => {
   try {
-    const filters = req.body || {};
+    const { page, ...filters } = req.body || {};
     if (!filters.type) return res.status(400).json({ error: 'missing_type' });
-    res.json(await buildDeck(filters, config.deckSize));
+    res.json(await buildDeck(filters, config.deckSize, page));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'discover_failed' });
@@ -60,9 +60,44 @@ function autoAdvance(room) {
   for (const [pid] of room.players) { if (!room.votes.get(movie.id)?.has(pid)) { if (!room.votes.has(movie.id)) room.votes.set(movie.id, new Map()); room.votes.get(movie.id).set(pid, 'nope'); } }
   advanceOrFinish(room);
 }
+async function loadNextBatch(room) {
+  room.status = 'loading';
+  emitRoom(room);
+  try {
+    const deck = await buildDeck(room.filters, config.deckSize, room.nextPage);
+    if (!deck.length) {
+      room.status = 'results';
+      emitRoom(room);
+      return;
+    }
+    room.nextPage += 1;
+    room.deck = deck;
+    room.currentIndex = 0;
+    room.votes.clear();
+    room.status = 'swiping';
+    startVoteTimer(room);
+    emitRoom(room);
+  } catch (err) {
+    console.error(err);
+    room.status = 'results';
+    emitRoom(room);
+  }
+}
 function advanceOrFinish(room) {
-  clearVoteTimer(room); const hasMore = room.advanceCard();
-  if (hasMore) { room.status = 'swiping'; startVoteTimer(room); emitRoom(room); } else { room.status = 'results'; emitRoom(room); }
+  clearVoteTimer(room);
+  const hasMore = room.advanceCard();
+  if (hasMore) {
+    room.status = 'swiping';
+    startVoteTimer(room);
+    emitRoom(room);
+    return;
+  }
+  if (room.computeResults().length === 0) {
+    loadNextBatch(room);
+    return;
+  }
+  room.status = 'results';
+  emitRoom(room);
 }
 
 io.on('connection', (socket) => {
@@ -82,13 +117,17 @@ io.on('connection', (socket) => {
     if (!room.filters?.type) return socket.emit('room:error', { message: 'Configura prima i filtri di ricerca.' });
     room.status = 'loading'; emitRoom(room);
     try {
-      room.deck = await buildDeck(room.filters); room.currentIndex = 0; room.votes.clear();
+      room.nextPage = 1;
+      room.deck = await buildDeck(room.filters, config.deckSize, room.nextPage);
+      room.nextPage += 1;
+      room.currentIndex = 0;
+      room.votes.clear();
       if (!room.deck.length) { room.status = 'lobby'; socket.emit('room:error', { message: 'Nessun titolo trovato. Prova filtri diversi.' }); emitRoom(room); return; }
       room.status = 'swiping'; startVoteTimer(room); emitRoom(room);
     } catch (err) { console.error(err); room.status = 'lobby'; socket.emit('room:error', { message: 'Errore nel caricamento dei titoli.' }); emitRoom(room); }
   });
   socket.on('vote:cast', ({ vote }) => { const room = rooms.getRoomBySocket(socket.id); if (!room) return; const result = room.castVote(socket.id, vote === 'like' ? 'like' : 'nope'); if (!result.ok) return; emitRoom(room); if (result.allVoted) advanceOrFinish(room); });
-  socket.on('room:restart', () => { const room = rooms.getRoomBySocket(socket.id); if (!room || !room.isHost(socket.id)) return; clearVoteTimer(room); room.status = 'lobby'; room.deck = []; room.currentIndex = 0; room.votes.clear(); room.filters = null; emitRoom(room); });
+  socket.on('room:restart', () => { const room = rooms.getRoomBySocket(socket.id); if (!room || !room.isHost(socket.id)) return; clearVoteTimer(room); room.status = 'lobby'; room.deck = []; room.currentIndex = 0; room.nextPage = 1; room.votes.clear(); room.filters = null; emitRoom(room); });
   socket.on('disconnect', () => handleDisconnect(socket));
   function handleDisconnect(sock) {
     const room = rooms.getRoomBySocket(sock.id); if (!room) return; sock.leave(room.id); room.removePlayer(sock.id); rooms.unbindSocket(sock.id);
