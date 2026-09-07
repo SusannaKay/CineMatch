@@ -1,4 +1,5 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
+import { appState } from '../state.js';
 import { addToWatchlist, watchlistCount } from '../watchlist.js';
 import { openDetails } from './details.js';
 import { showToast } from '../socket.js';
@@ -6,10 +7,16 @@ import { showToast } from '../socket.js';
 let movies = [];
 let index = 0;
 let handlers = null;
+let currentPage = 1;
+let likesInBatch = 0;
+let loadingNextBatch = false;
 
 export function renderSolo(moviesList, onNavigate) {
   movies = moviesList || [];
   index = 0;
+  currentPage = 1;
+  likesInBatch = 0;
+  loadingNextBatch = false;
   const screen = mountScreen('screen-solo', `
     <div class="flex-grow flex flex-col overflow-hidden">
       <div class="px-4 py-3 flex justify-between items-center border-b border-slate-800 flex-shrink-0">
@@ -38,22 +45,67 @@ export function renderSolo(moviesList, onNavigate) {
 
 function renderCard(screen, onNavigate) {
   const container = screen.querySelector('#solo-card-container');
+  if (!container) return;
   const movie = movies[index];
   screen.querySelector('#solo-progress').textContent = movies.length ? `${index + 1} / ${movies.length}` : '0 titoli';
   screen.querySelector('#solo-watchlist span').textContent = watchlistCount();
   container.innerHTML = '';
-  if (!movie) { container.innerHTML = '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">Non ci sono altri titoli.<br>Prova una nuova ricerca.</div>'; return; }
+  if (!movie) {
+    container.innerHTML = loadingNextBatch
+      ? '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">Nessun like in questa selezione.<br>Carico altri titoli...</div>'
+      : '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">Non ci sono altri titoli.<br>Prova una nuova ricerca.</div>';
+    return;
+  }
   const card = document.createElement('div'); card.className = 'movie-card shadow-2xl'; card.style.backgroundImage = `url('${movie.poster_path}')`;
   card.innerHTML = `<div class="badge badge-like">SÌ</div><div class="badge badge-nope">NO</div><div class="card-overlay"><h2 class="text-3xl font-extrabold leading-tight">${escapeHTML(movie.title)}</h2><div class="flex items-center text-sm font-semibold gap-3 text-slate-300 mt-2"><span>📅 ${movie.release_date?.substring(0,4)||'N/A'}</span><span>⭐ ${movie.vote_average}</span></div></div>`;
   container.appendChild(card);
   setupSwipe(card, movie, screen, onNavigate);
 }
 
+async function loadNextBatch(onNavigate) {
+  loadingNextBatch = true;
+  const screen = document.getElementById('screen-solo');
+  renderCard(screen, onNavigate);
+  try {
+    currentPage++;
+    const r = await fetch('/api/discover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...appState.filtersDraft, page: currentPage })
+    });
+    if (!r.ok) throw new Error();
+    const nextMovies = await r.json();
+    if (!nextMovies.length) throw new Error('empty');
+    movies = nextMovies;
+    index = 0;
+    likesInBatch = 0;
+  } catch (err) {
+    showToast(err.message === 'empty' ? 'Non ci sono altri titoli con questi filtri.' : 'Errore nel caricamento di altri titoli.');
+    onNavigate('filters');
+  } finally {
+    loadingNextBatch = false;
+  }
+  const currentScreen = document.getElementById('screen-solo');
+  if (currentScreen) renderCard(currentScreen, onNavigate);
+}
+
 function vote(like, onNavigate) {
-  const movie = movies[index]; if (!movie) return;
-  if (like) { addToWatchlist(movie); showToast('Salvato nella Watchlist'); }
+  const movie = movies[index]; if (!movie || loadingNextBatch) return;
+  if (like) {
+    likesInBatch++;
+    addToWatchlist(movie);
+    showToast('Salvato nella Watchlist');
+  }
   index++;
-  if (index >= movies.length) { showToast('Hai finito questa sessione'); onNavigate('watchlist'); return; }
+  if (index >= movies.length) {
+    if (likesInBatch === 0) {
+      loadNextBatch(onNavigate);
+      return;
+    }
+    showToast('Hai finito questa selezione');
+    onNavigate('watchlist');
+    return;
+  }
   renderCard(document.getElementById('screen-solo'), onNavigate);
 }
 
