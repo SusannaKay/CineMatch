@@ -78,21 +78,25 @@ function buildDiscoverUrl(filters, page) {
   return { url, endpoint };
 }
 
-export async function buildDeck(filters, size = config.deckSize) {
+export async function buildDeck(filters, size = config.deckSize, startPage = 1) {
+  const firstPage = Math.max(1, Number(startPage) || 1);
+
   if (config.useMockData) {
     await new Promise((r) => setTimeout(r, 400));
     const copies = [];
+    const offset = (firstPage - 1) * size * 1000;
     while (copies.length < size) {
-      copies.push(...mockMovies.map((m, i) => ({ ...m, id: m.id + copies.length * 100 + i })));
+      const copyIndex = Math.floor(copies.length / mockMovies.length);
+      copies.push(...mockMovies.map((m, i) => ({ ...m, id: m.id + offset + copyIndex * 100 + i })));
     }
     return copies.slice(0, size);
   }
 
   const movies = [];
-  let page = 1;
+  let page = firstPage;
   const { url: basePath, endpoint } = buildDiscoverUrl(filters, page);
 
-  while (movies.length < size && page <= 5) {
+  while (movies.length < size && page < firstPage + 5) {
     const path = basePath.replace(/page=\d+/, `page=${page}`);
     const data = await tmdbFetch(path);
     const valid = (data.results || []).filter((m) => m.poster_path);
