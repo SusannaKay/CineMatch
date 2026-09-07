@@ -16,9 +16,13 @@ function navigate(screen) {
   if (screen === 'multiplayer') {
     appState.mode = 'multiplayer';
     currentScreen = 'welcome';
-  } else if (screen === 'solo' || screen === 'filters') {
+  } else if (screen === 'solo') {
     appState.mode = 'solo';
-    if (screen === 'filters') resetFiltersDraft();
+    currentScreen = screen;
+  } else if (screen === 'filters') {
+    // Entering the filter flow must not overwrite the current mode.
+    // Multiplayer hosts configure the same filters, then return to their room.
+    if (!appState.mode) appState.mode = 'solo';
     currentScreen = screen;
   } else if (screen === 'suggestion') {
     appState.mode = 'suggestion';
