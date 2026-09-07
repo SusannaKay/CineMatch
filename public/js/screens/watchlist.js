@@ -8,7 +8,7 @@ export function renderWatchlist(onNavigate) {
     <div class="flex-grow flex flex-col overflow-hidden">
       <div class="p-6 pb-3"><h2 class="text-2xl font-extrabold">La tua Watchlist</h2><p class="text-sm text-slate-400 mt-1">I titoli che hai salvato.</p></div>
       <div id="watchlist-content" class="px-6 overflow-y-auto flex-grow pb-4"></div>
-      <nav id="mode-nav" class="flex-shrink-0 h-16 border-t border-slate-800 bg-slate-900/95"></nav>
+      <nav id="mode-nav" class="mode-nav flex-shrink-0 h-16 border-t border-slate-800 bg-slate-900/95"></nav>
     </div>
   `);
   setHeaderBadge(`${getWatchlist().length}`);
