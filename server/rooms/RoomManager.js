@@ -19,6 +19,7 @@ export class Room {
     this.filters = null;
     this.deck = [];
     this.currentIndex = 0;
+    this.nextPage = 1;
     /** @type {Map<number, Map<string, 'like'|'nope'>>} */
     this.votes = new Map();
     this.createdAt = Date.now();
