@@ -1,5 +1,6 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
-import { leaveRoom, setFilters, startSession, getJoinUrl, showToast } from '../socket.js';
+import { leaveRoom, startSession, getJoinUrl, showToast } from '../socket.js';
+import { appState, resetFiltersDraft } from '../state.js';
 import { renderFilters } from './filters.js';
 
 function playerChips(players, hostId) {
@@ -78,7 +79,11 @@ export function renderLobby(room, onNavigate) {
   };
 
   if (isHost) {
-    document.getElementById('btn-configure').onclick = () => onNavigate('filters');
+    document.getElementById('btn-configure').onclick = () => {
+      if (room.filters?.type) appState.filtersDraft = { ...room.filters };
+      else resetFiltersDraft();
+      onNavigate('filters');
+    };
     document.getElementById('btn-start').onclick = () => startSession();
 
     const joinUrl = getJoinUrl(room.id);
