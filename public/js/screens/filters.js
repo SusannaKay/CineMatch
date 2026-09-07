@@ -29,7 +29,7 @@ export function renderFilters(onNavigate) {
   const excludeBtn = screen.querySelector('#btn-exclude');
   qText.textContent = q.text;
 
-  renderNav(screen, onNavigate, 'solo');
+  renderNav(screen, onNavigate, appState.mode || 'solo');
 
   if (q.isGenreStep && q.excludable) {
     excludeBtn.classList.remove('hidden');
@@ -93,7 +93,7 @@ export function renderFilters(onNavigate) {
       appState.filterStep--;
       renderFilters(onNavigate);
     } else {
-      onNavigate('welcome');
+      onNavigate(appState.mode === 'multiplayer' ? 'lobby' : 'welcome');
     }
   };
 }
@@ -144,8 +144,9 @@ function renderNav(screen, onNavigate, active) {
   nav.innerHTML = items.map(([id, label, icon]) => `<button data-mode="${id}" class="flex-1 flex flex-col items-center justify-center gap-1 ${active === id ? 'text-primary' : 'text-slate-500'}"><i class="fa-solid ${icon}"></i><span class="text-[10px] font-bold">${label}</span></button>`).join('');
   nav.querySelectorAll('[data-mode]').forEach((btn) => {
     btn.onclick = () => {
-      if (btn.dataset.mode === 'solo') return;
-      onNavigate(btn.dataset.mode);
+      const mode = btn.dataset.mode;
+      if (mode === active) return;
+      onNavigate(mode);
     };
   });
 }
