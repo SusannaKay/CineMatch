@@ -11,13 +11,37 @@ async function tmdbFetch(path) {
   return res.json();
 }
 
+async function fetchOmdbRatings(imdbId) {
+  const empty = { imdbRating: null, rottenTomatoes: null, metacritic: null };
+  if (!imdbId || !config.omdbApiKey) return empty;
+  try {
+    const res = await fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${config.omdbApiKey}`);
+    const data = await res.json();
+    if (data.Response === 'False') return empty;
+    const rt = (data.Ratings || []).find((r) => r.Source === 'Rotten Tomatoes');
+    const mc = (data.Ratings || []).find((r) => r.Source === 'Metacritic');
+    return {
+      imdbRating: data.imdbRating && data.imdbRating !== 'N/A' ? data.imdbRating : null,
+      rottenTomatoes: rt?.Value || null,
+      metacritic: mc?.Value || (data.Metascore && data.Metascore !== 'N/A' ? `${data.Metascore}/100` : null),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function sortByRating(movies) {
+  return [...movies].sort((a, b) => (parseFloat(b.vote_average) || 0) - (parseFloat(a.vote_average) || 0));
+}
+
 async function enrichMovie(m, endpoint) {
   let providers = [];
   let trailerKey = null;
+  let imdbId = null;
   let backdrop_path = m.backdrop_path ? `https://image.tmdb.org/t/p/w780${m.backdrop_path}` : null;
 
   try {
-    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos`);
+    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids`);
     const itProviders = d['watch/providers']?.results?.IT?.flatrate || [];
     providers = itProviders.map((p) => ({
       name: p.provider_name,
@@ -26,9 +50,12 @@ async function enrichMovie(m, endpoint) {
     const trailer = (d.videos?.results || []).find((v) => v.site === 'YouTube' && v.type === 'Trailer');
     if (trailer) trailerKey = trailer.key;
     if (d.backdrop_path) backdrop_path = `https://image.tmdb.org/t/p/w780${d.backdrop_path}`;
+    imdbId = d.external_ids?.imdb_id || null;
   } catch {
     /* enrichment opzionale */
   }
+
+  const { imdbRating, rottenTomatoes, metacritic } = await fetchOmdbRatings(imdbId);
 
   return {
     id: m.id,
@@ -40,6 +67,9 @@ async function enrichMovie(m, endpoint) {
     backdrop_path,
     release_date: m.release_date || m.first_air_date || null,
     vote_average: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
+    imdbRating,
+    rottenTomatoes,
+    metacritic,
     providers,
     trailerKey,
   };
@@ -89,7 +119,7 @@ export async function buildDeck(filters, size = config.deckSize, startPage = 1) 
       const copyIndex = Math.floor(copies.length / mockMovies.length);
       copies.push(...mockMovies.map((m, i) => ({ ...m, id: m.id + offset + copyIndex * 100 + i })));
     }
-    return copies.slice(0, size);
+    return sortByRating(copies.slice(0, size));
   }
 
   const movies = [];
@@ -105,7 +135,7 @@ export async function buildDeck(filters, size = config.deckSize, startPage = 1) 
     page++;
   }
 
-  return movies.slice(0, size);
+  return sortByRating(movies.slice(0, size));
 }
 
 export async function searchMulti(query) {
@@ -136,14 +166,15 @@ export async function getRecommendations(id, mediaType) {
   const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
 
   if (config.useMockData) {
-    return mockMovies
+    return sortByRating(mockMovies
       .filter((movie) => String(movie.id) !== String(id))
-      .slice(0, 6);
+      .slice(0, 6));
   }
 
   const data = await tmdbFetch(`/${endpoint}/${id}/recommendations?page=1`);
   const valid = (data.results || []).filter((movie) => movie.poster_path).slice(0, 12);
-  return Promise.all(valid.map((movie) => enrichMovie(movie, endpoint)));
+  const enriched = await Promise.all(valid.map((movie) => enrichMovie(movie, endpoint)));
+  return sortByRating(enriched);
 }
 
 export { config as tmdbConfig };
