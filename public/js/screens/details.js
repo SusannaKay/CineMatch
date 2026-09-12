@@ -1,3 +1,10 @@
+function formatRuntime(minutes) {
+  if (!minutes) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
 function ratingBadgesHTML(movie) {
   const badges = [
     `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-yellow-400 text-xs font-bold"><i class="fa-solid fa-star"></i> TMDB ${movie.vote_average}</span>`,
@@ -55,16 +62,30 @@ export function openDetails(movie) {
       </div>`;
   }
 
+  const runtimeStr = formatRuntime(movie.runtime);
+  const genresHTML = movie.genres?.length
+    ? `<div class="flex flex-wrap gap-2 mb-4">${movie.genres.map((g) => `<span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">${g}</span>`).join('')}</div>`
+    : '';
+  const creditsHTML = (movie.director || movie.cast?.length)
+    ? `<div class="mt-6 space-y-1">
+        ${movie.director ? `<p class="text-sm text-slate-400"><span class="font-bold text-slate-300">Regia:</span> ${movie.director}</p>` : ''}
+        ${movie.cast?.length ? `<p class="text-sm text-slate-400"><span class="font-bold text-slate-300">Cast:</span> ${movie.cast.join(', ')}</p>` : ''}
+      </div>`
+    : '';
+
   document.getElementById('details-content').innerHTML = `
     <h2 class="text-3xl font-extrabold mb-4 leading-tight">${movie.title}</h2>
-    <div class="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-4">
+    <div class="flex items-center gap-3 text-sm font-semibold text-slate-400 mb-4">
       <span><i class="fa-solid fa-calendar mr-1"></i> ${movie.release_date?.substring(0, 4) || 'N/A'}</span>
+      ${runtimeStr ? `<span><i class="fa-solid fa-clock mr-1"></i> ${runtimeStr}</span>` : ''}
     </div>
+    ${genresHTML}
     <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-700 pb-4">
       ${ratingBadgesHTML(movie)}
     </div>
     <h3 class="font-bold text-slate-300 mb-2">Trama</h3>
     <p class="text-slate-400 leading-relaxed text-sm">${movie.overview}</p>
+    ${creditsHTML}
     ${providersHTML}
     ${trailerHTML}
   `;

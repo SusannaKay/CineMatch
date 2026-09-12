@@ -38,10 +38,14 @@ async function enrichMovie(m, endpoint) {
   let providers = [];
   let trailerKey = null;
   let imdbId = null;
+  let genres = [];
+  let runtime = null;
+  let director = null;
+  let cast = [];
   let backdrop_path = m.backdrop_path ? `https://image.tmdb.org/t/p/w780${m.backdrop_path}` : null;
 
   try {
-    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids`);
+    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids,credits`);
     const itProviders = d['watch/providers']?.results?.IT?.flatrate || [];
     providers = itProviders.map((p) => ({
       name: p.provider_name,
@@ -51,6 +55,12 @@ async function enrichMovie(m, endpoint) {
     if (trailer) trailerKey = trailer.key;
     if (d.backdrop_path) backdrop_path = `https://image.tmdb.org/t/p/w780${d.backdrop_path}`;
     imdbId = d.external_ids?.imdb_id || null;
+    genres = (d.genres || []).map((g) => g.name);
+    runtime = endpoint === 'tv' ? (d.episode_run_time?.[0] || null) : (d.runtime || null);
+    director = endpoint === 'tv'
+      ? (d.created_by || [])[0]?.name || null
+      : (d.credits?.crew || []).find((c) => c.job === 'Director')?.name || null;
+    cast = (d.credits?.cast || []).slice(0, 5).map((c) => c.name);
   } catch {
     /* enrichment opzionale */
   }
@@ -70,6 +80,10 @@ async function enrichMovie(m, endpoint) {
     imdbRating,
     rottenTomatoes,
     metacritic,
+    genres,
+    runtime,
+    director,
+    cast,
     providers,
     trailerKey,
   };
