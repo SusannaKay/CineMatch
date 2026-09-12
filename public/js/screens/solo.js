@@ -3,6 +3,7 @@ import { appState } from '../state.js';
 import { addToWatchlist, watchlistCount } from '../watchlist.js';
 import { openDetails } from './details.js';
 import { showToast } from '../socket.js';
+import { isIgnored, addToIgnored } from '../utils/banlist.js';
 
 let movies = [];
 let index = 0;
@@ -12,7 +13,7 @@ let likesInBatch = 0;
 let loadingNextBatch = false;
 
 export function renderSolo(moviesList, onNavigate) {
-  movies = moviesList || [];
+  movies = (moviesList || []).filter((m) => !isIgnored(m.id));
   index = 0;
   currentPage = 1;
   likesInBatch = 0;
@@ -57,9 +58,21 @@ function renderCard(screen, onNavigate) {
     return;
   }
   const card = document.createElement('div'); card.className = 'movie-card shadow-2xl'; card.style.backgroundImage = `url('${movie.poster_path}')`;
-  card.innerHTML = `<div class="badge badge-like">SÌ</div><div class="badge badge-nope">NO</div><div class="card-overlay"><h2 class="text-3xl font-extrabold leading-tight">${escapeHTML(movie.title)}</h2><div class="flex items-center text-sm font-semibold gap-3 text-slate-300 mt-2"><span>📅 ${movie.release_date?.substring(0,4)||'N/A'}</span><span>⭐ ${movie.vote_average}</span></div></div>`;
+  card.innerHTML = `<div class="badge badge-like">SÌ</div><div class="badge badge-nope">NO</div><button class="btn-ignore absolute top-3 right-3 z-[110] w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-rose-400 active:scale-90 transition-all" title="Non mostrare più questo titolo"><i class="fa-solid fa-eye-slash"></i></button><div class="card-overlay"><h2 class="text-3xl font-extrabold leading-tight">${escapeHTML(movie.title)}</h2><div class="flex items-center text-sm font-semibold gap-3 text-slate-300 mt-2"><span>📅 ${movie.release_date?.substring(0,4)||'N/A'}</span><span>⭐ ${movie.vote_average}</span></div></div>`;
   container.appendChild(card);
   setupSwipe(card, movie, screen, onNavigate);
+  wireIgnoreButton(card, movie, screen, onNavigate);
+}
+
+function wireIgnoreButton(card, movie, screen, onNavigate) {
+  const btn = card.querySelector('.btn-ignore');
+  ['touchstart', 'touchmove', 'touchend'].forEach((evt) => btn.addEventListener(evt, (e) => e.stopPropagation()));
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    addToIgnored(movie.id);
+    showToast(`"${movie.title}" non ti verrà più proposto`);
+    vote(false, onNavigate);
+  });
 }
 
 async function loadNextBatch(onNavigate) {
@@ -74,7 +87,7 @@ async function loadNextBatch(onNavigate) {
       body: JSON.stringify({ ...appState.filtersDraft, page: currentPage })
     });
     if (!r.ok) throw new Error();
-    const nextMovies = await r.json();
+    const nextMovies = (await r.json()).filter((m) => !isIgnored(m.id));
     if (!nextMovies.length) throw new Error('empty');
     movies = nextMovies;
     index = 0;

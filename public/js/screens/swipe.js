@@ -1,26 +1,11 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
-import { castVote, showToast } from '../socket.js';
+import { castVote } from '../socket.js';
 import { openDetails } from './details.js';
-import { isIgnored, addToIgnored } from '../utils/banlist.js';
 
 let swipeHandlers = null;
 
 export function renderSwipe(room) {
   const movie = room.currentMovie;
-
-  // Titolo nella banlist personale: voto automaticamente "nope" senza mostrarlo
-  if (movie && !room.hasVoted && isIgnored(movie.id)) {
-    castVote('nope');
-    mountScreen('screen-swipe-skip', `
-      <div class="flex-grow flex flex-col justify-center items-center p-6 text-center text-slate-500">
-        <i class="fa-solid fa-eye-slash text-3xl mb-3"></i>
-        <p class="text-sm">Titolo escluso automaticamente…</p>
-      </div>
-    `);
-    setHeaderBadge(`Stanza ${room.id}`);
-    return;
-  }
-
   const { voted, total } = room.voteStatus;
   const progress = room.deckLength ? `${room.currentIndex + 1} / ${room.deckLength}` : '';
 
@@ -83,30 +68,24 @@ export function renderSwipe(room) {
 function renderCard(movie) {
   const container = document.getElementById('cards-container');
   container.innerHTML = '';
-  const card = buildCardEl(movie, true);
+  const card = buildCardEl(movie);
   container.appendChild(card);
   setupSwipe(card, movie);
-  wireIgnoreButton(card, movie);
 }
 
 function renderCardStatic(movie) {
   const container = document.getElementById('cards-container');
   container.innerHTML = '';
-  container.appendChild(buildCardEl(movie, false));
+  container.appendChild(buildCardEl(movie));
 }
 
-function buildCardEl(movie, interactive) {
+function buildCardEl(movie) {
   const card = document.createElement('div');
   card.className = 'movie-card shadow-2xl';
   card.style.backgroundImage = `url('${movie.poster_path}')`;
   card.innerHTML = `
     <div class="badge badge-like border-emerald-500 text-emerald-500">SÌ</div>
     <div class="badge badge-nope border-rose-500 text-rose-500">NO</div>
-    ${interactive ? `
-      <button class="btn-ignore absolute top-3 right-3 z-[110] w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-rose-400 active:scale-90 transition-all" title="Non mostrare più questo titolo">
-        <i class="fa-solid fa-eye-slash"></i>
-      </button>
-    ` : ''}
     <div class="card-overlay">
       <h2 class="text-3xl font-extrabold leading-tight shadow-black drop-shadow-md">${movie.title}</h2>
       <div class="flex items-center text-sm font-semibold gap-3 text-slate-300 drop-shadow-md mt-2">
@@ -116,23 +95,6 @@ function buildCardEl(movie, interactive) {
     </div>
   `;
   return card;
-}
-
-function wireIgnoreButton(card, movie) {
-  const btn = card.querySelector('.btn-ignore');
-  if (!btn) return;
-
-  // Evita che il tap sul pulsante venga interpretato come inizio di uno swipe
-  ['touchstart', 'touchmove', 'touchend'].forEach((evt) => {
-    btn.addEventListener(evt, (e) => e.stopPropagation());
-  });
-
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    addToIgnored(movie.id);
-    showToast(`"${movie.title}" non ti verrà più proposto`);
-    submitVote('nope');
-  });
 }
 
 function submitVote(vote) {
