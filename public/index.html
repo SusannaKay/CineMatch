@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Stop arguing about what to watch. Swipe, save, and find something you'll actually want to watch.">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CineMatch">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>CineMatch</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -43,6 +51,10 @@
 </div>
 
 <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg z-[100] hidden"></div>
+
+<button id="btn-install" class="hidden fixed bottom-20 right-4 z-40 bg-primary text-white rounded-full w-12 h-12 shadow-lg items-center justify-center" aria-label="Installa CineMatch" title="Installa CineMatch">
+  <i class="fa-solid fa-arrow-down-to-bracket"></i>
+</button>
 
 <script src="/socket.io/socket.io.js"></script>
 <script type="module" src="/js/main.js"></script>

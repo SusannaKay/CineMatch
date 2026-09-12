@@ -59,6 +59,7 @@ async function enrichMovie(m, endpoint) {
 
   return {
     id: m.id,
+    mediaType: endpoint === 'tv' ? 'tv' : 'movie',
     title: m.title || m.name,
     overview: m.overview || 'Trama non disponibile.',
     poster_path: m.poster_path

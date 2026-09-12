@@ -15,6 +15,9 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 - ✨ **Suggestion mode** — search for a movie or TV show you love and get a list of similar titles, without entering swipe mode.
 - 🔖 **Watchlist** — keep, inspect, sort, and remove titles you've saved across sessions.
 - 🔀 **Watchlist sorting** — order saved titles by the order you added them or by rating (ascending/descending).
+- 🔍 **Watchlist search & filters** — search saved titles by name and filter by content type (movies vs. TV shows), with a live count and average rating.
+- 🎲 **Surprise me** — still can't decide? Pick a random title from your (filtered) Watchlist and jump straight to its details.
+- 📲 **Installable app (PWA)** — CineMatch can be installed on your phone or desktop home screen and keeps working offline for the app shell once you've visited it.
 - 👥 **Multiplayer mode** — create a room and invite friends with a room code, a shareable link, or a QR code.
 - 🎯 **Group matching** — once everyone has voted on a title, CineMatch keeps the ones that reached a **majority** of likes (strictly more than half of the players), ranked by number of likes and consensus %.
 - 🧩 **Filters** — narrow discovery by content type, genre (include or exclude), language, era, runtime, and streaming platform.
@@ -66,7 +69,15 @@ Rooms support up to **8 players** and automatically expire after a period of ina
 
 ### Watchlist
 
-The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time.
+The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time. Use the search box and type chips (All / Movies / TV) to narrow down a long list, check the stats line for a quick count and average rating, or hit **Sorpresa** to have CineMatch pick a random title from your current filter for you.
+
+### Installing CineMatch (PWA)
+
+CineMatch ships a web app manifest and a service worker, so supported browsers (Chrome/Edge on Android and desktop, Safari on iOS) can install it like a native app:
+
+1. Open CineMatch in your browser.
+2. Look for an "Install app" / "Add to Home Screen" option (or tap the install button that appears in-app when your browser supports it).
+3. Once installed, the app shell (HTML/CSS/JS) is cached and keeps loading even with a flaky or offline connection — live data (search, discovery, multiplayer) still requires a network connection.
 
 ## 🏗️ Architecture
 
@@ -130,6 +141,7 @@ CineMatch uses a lightweight Node.js backend that serves the frontend, proxies T
 | **qrcodejs** *(CDN)* | QR code generation for multiplayer room invites |
 | **localStorage** | Local Watchlist, ignored-titles list, and nickname persistence |
 | **dotenv** | Environment variable management |
+| **Web App Manifest + Service Worker** | Installable app (PWA) with offline-capable app shell |
 
 ## 🚀 Getting Started
 
@@ -267,7 +279,7 @@ Some ideas for future iterations:
 - [ ] Shareable result pages
 - [ ] More sophisticated recommendation algorithms
 - [ ] Additional streaming providers and regions
-- [ ] Improved mobile UX / PWA support
+- [x] Improved mobile UX / PWA support
 - [ ] Persistent multiplayer rooms
 - [ ] Cross-device Watchlist sync
 - [ ] Session history

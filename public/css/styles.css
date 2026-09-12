@@ -1,7 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 body{background-color:#0f172a;margin:0;overflow:hidden;overscroll-behavior-y:none;font-family:'Inter',sans-serif}
 #app-container{width:100%;max-width:430px;height:100dvh;margin:0 auto;position:relative;background-color:#0f172a;box-shadow:0 0 20px rgba(0,0,0,.5);overflow:hidden;display:flex;flex-direction:column}
-.overlay-screen,.screen{position:absolute;inset:0;display:flex;flex-direction:column;z-index:40;background-color:#0f172a}.hidden{display:none!important}
+#app-container>header{position:relative}
+#app-container>header::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(225,29,72,.5),transparent)}
+.overlay-screen,.screen{position:absolute;inset:0;display:flex;flex-direction:column;z-index:40;background-color:#0f172a;animation:screen-in .3s cubic-bezier(.16,1,.3,1)}.hidden{display:none!important}
+@keyframes screen-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+button:active{transform:scale(.96)}
+button{transition:transform .12s ease}
 .mode-nav{display:flex;width:100%;align-items:stretch;justify-content:space-around;overflow:hidden}.mode-nav>button{min-width:0;height:100%}
 #cards-container,#solo-card-container{flex-grow:1;position:relative;margin:1rem;perspective:1000px}
 .movie-card{position:absolute;inset:0;background-color:#1e293b;border-radius:1.5rem;overflow:hidden;box-shadow:0 10px 15px -3px rgba(0,0,0,.5);transform-origin:50% 100%;will-change:transform;touch-action:none;background-size:cover;background-position:center}
