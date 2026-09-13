@@ -1,6 +1,5 @@
 import { config } from '../config.js';
 import { mockMovies } from '../data/mockMovies.js';
-import { genreNamesFromIds } from '../data/genres.js';
 import { sanitizeRegion, languageForRegion } from '../data/regions.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -40,10 +39,14 @@ async function enrichMovie(m, endpoint, region) {
   let providers = [];
   let trailerKey = null;
   let imdbId = null;
+  let genres = [];
+  let runtime = null;
+  let director = null;
+  let cast = [];
   let backdrop_path = m.backdrop_path ? `https://image.tmdb.org/t/p/w780${m.backdrop_path}` : null;
 
   try {
-    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids`, region);
+    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids,credits`, region);
     const regionProviders = d['watch/providers']?.results?.[region]?.flatrate || [];
     providers = regionProviders.map((p) => ({
       name: p.provider_name,
@@ -53,6 +56,12 @@ async function enrichMovie(m, endpoint, region) {
     if (trailer) trailerKey = trailer.key;
     if (d.backdrop_path) backdrop_path = `https://image.tmdb.org/t/p/w780${d.backdrop_path}`;
     imdbId = d.external_ids?.imdb_id || null;
+    genres = (d.genres || []).map((g) => g.name);
+    runtime = endpoint === 'tv' ? (d.episode_run_time?.[0] || null) : (d.runtime || null);
+    director = endpoint === 'tv'
+      ? (d.created_by || [])[0]?.name || null
+      : (d.credits?.crew || []).find((c) => c.job === 'Director')?.name || null;
+    cast = (d.credits?.cast || []).slice(0, 5).map((c) => c.name);
   } catch {
     /* enrichment is best-effort */
   }
@@ -62,7 +71,6 @@ async function enrichMovie(m, endpoint, region) {
   return {
     id: m.id,
     mediaType: endpoint === 'tv' ? 'tv' : 'movie',
-    genres: genreNamesFromIds(m.genre_ids),
     title: m.title || m.name,
     overview: m.overview || 'No overview available.',
     poster_path: m.poster_path
@@ -74,6 +82,10 @@ async function enrichMovie(m, endpoint, region) {
     imdbRating,
     rottenTomatoes,
     metacritic,
+    genres,
+    runtime,
+    director,
+    cast,
     providers,
     trailerKey,
   };
