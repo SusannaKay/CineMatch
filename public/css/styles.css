@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+html,body{height:100%}
 body{background-color:#0f172a;margin:0;overflow:hidden;overscroll-behavior-y:none;font-family:'Inter',sans-serif}
 #app-container{width:100%;max-width:430px;height:100dvh;margin:0 auto;position:relative;background-color:#0f172a;box-shadow:0 0 20px rgba(0,0,0,.5);overflow:hidden;display:flex;flex-direction:column}
 #main{position:relative}
