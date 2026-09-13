@@ -19,7 +19,7 @@ export function renderSwipe(room) {
       <div id="cards-container"></div>
 
       <div id="waiting-bar" class="hidden text-center py-3 text-sm text-slate-400 border-t border-slate-800">
-        <i class="fa-solid fa-hourglass-half mr-1"></i> In attesa degli altri… (${voted}/${total})
+        <i class="fa-solid fa-hourglass-half mr-1"></i> Waiting for others… (${voted}/${total})
       </div>
 
       <div id="action-bar" class="text-center pb-8 pt-2 px-6 flex-shrink-0">
@@ -30,17 +30,17 @@ export function renderSwipe(room) {
           <button id="btn-details" class="flex flex-col items-center py-2 w-1/3 text-rose-500 hover:text-rose-400 active:scale-90 transition-all relative">
             <div class="absolute left-0 top-1/4 h-1/2 w-px bg-slate-700"></div>
             <div class="absolute right-0 top-1/4 h-1/2 w-px bg-slate-700"></div>
-            <i class="fa-solid fa-info text-lg mb-1"></i><span class="text-xs font-medium">Dettagli</span>
+            <i class="fa-solid fa-info text-lg mb-1"></i><span class="text-xs font-medium">Details</span>
           </button>
           <button id="btn-like" class="flex flex-col items-center py-2 w-1/3 text-emerald-500 hover:text-emerald-400 active:scale-90 transition-all">
-            <i class="fa-solid fa-heart text-lg mb-1"></i><span class="text-xs font-medium">Mi piace</span>
+            <i class="fa-solid fa-heart text-lg mb-1"></i><span class="text-xs font-medium">Like</span>
           </button>
         </div>
       </div>
     </div>
   `);
 
-  setHeaderBadge(`Stanza ${room.id}`);
+  setHeaderBadge(`Room ${room.id}`);
 
   const dotsEl = document.getElementById('vote-dots');
   dotsEl.innerHTML = Array.from({ length: total }, (_, i) =>
@@ -84,7 +84,7 @@ function buildCardEl(movie) {
   card.className = 'movie-card shadow-2xl';
   card.style.backgroundImage = `url('${movie.poster_path}')`;
   card.innerHTML = `
-    <div class="badge badge-like border-emerald-500 text-emerald-500">SÌ</div>
+    <div class="badge badge-like border-emerald-500 text-emerald-500">YES</div>
     <div class="badge badge-nope border-rose-500 text-rose-500">NO</div>
     <div class="card-overlay">
       <h2 class="text-3xl font-extrabold leading-tight shadow-black drop-shadow-md">${movie.title}</h2>

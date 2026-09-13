@@ -15,9 +15,9 @@ export function renderWatchlist(onNavigate) {
   const screen = mountScreen('screen-watchlist', `
     <div class="flex-grow flex flex-col overflow-hidden">
       <div class="p-6 pb-3 flex items-center justify-between gap-3">
-        <div><h2 class="text-2xl font-extrabold">La tua Watchlist</h2><p class="text-sm text-slate-400 mt-1">I titoli che hai salvato.</p></div>
+        <div><h2 class="text-2xl font-extrabold">Your Watchlist</h2><p class="text-sm text-slate-400 mt-1">Titles you've saved.</p></div>
         <select id="sort-select" class="bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg px-2 py-2">
-          <option value="added">Ordine aggiunta</option>
+          <option value="added">Date added</option>
           <option value="rating-desc">Rating ↓</option>
           <option value="rating-asc">Rating ↑</option>
         </select>
@@ -25,20 +25,20 @@ export function renderWatchlist(onNavigate) {
       <div class="px-6 pb-3 flex-shrink-0">
         <div class="relative mb-3">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-          <input id="watchlist-search" type="search" placeholder="Cerca nella tua Watchlist..." class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-500">
+          <input id="watchlist-search" type="search" placeholder="Search your Watchlist..." class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-500">
         </div>
         <div class="flex items-center gap-2 mb-2">
           <div id="type-filters" class="flex gap-2 flex-1"></div>
-          <button id="btn-surprise" class="flex items-center gap-1.5 bg-primary/15 text-primary border border-primary/40 text-xs font-bold px-3 py-2 rounded-lg flex-shrink-0"><i class="fa-solid fa-shuffle"></i> Sorpresa</button>
+          <button id="btn-surprise" class="flex items-center gap-1.5 bg-primary/15 text-primary border border-primary/40 text-xs font-bold px-3 py-2 rounded-lg flex-shrink-0"><i class="fa-solid fa-shuffle"></i> Surprise me</button>
         </div>
         <div class="flex items-center gap-2">
           <div id="status-filters" class="flex gap-2 flex-1"></div>
           <div class="relative flex-shrink-0">
-            <button id="btn-export" class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-export"></i> Esporta <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i></button>
+            <button id="btn-export" class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-file-export"></i> Export <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i></button>
             <div id="export-menu" class="hidden absolute right-0 top-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-10 overflow-hidden w-52">
-              <button data-fmt="md" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-copy w-4"></i>Copia come testo</button>
-              <button data-fmt="json" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-file-code w-4"></i>Scarica JSON</button>
-              <button data-fmt="png" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-image w-4"></i>Scarica immagine</button>
+              <button data-fmt="md" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-copy w-4"></i>Copy as text</button>
+              <button data-fmt="json" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-file-code w-4"></i>Download JSON</button>
+              <button data-fmt="png" class="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-2"><i class="fa-solid fa-image w-4"></i>Download image</button>
             </div>
           </div>
         </div>
@@ -84,18 +84,18 @@ function wireExportMenu(screen) {
     item.onclick = async () => {
       menu.classList.add('hidden');
       const all = getWatchlist();
-      if (!all.length) { showToast('La Watchlist è vuota'); return; }
+      if (!all.length) { showToast('Your Watchlist is empty'); return; }
       const fmt = item.dataset.fmt;
       if (fmt === 'md') {
         const r = await exportAsMarkdown(all);
-        showToast(r.copied ? 'Watchlist copiata negli appunti!' : 'File .md scaricato');
+        showToast(r.copied ? 'Watchlist copied to clipboard!' : '.md file downloaded');
       } else if (fmt === 'json') {
         exportAsJSON(all);
-        showToast('File JSON scaricato');
+        showToast('JSON file downloaded');
       } else if (fmt === 'png') {
-        showToast('Genero l\'immagine...');
+        showToast('Generating image...');
         const r = await exportAsImage(all);
-        showToast(r.ok ? 'Immagine scaricata!' : 'Esportazione immagine non riuscita, prova un altro formato.');
+        showToast(r.ok ? 'Image downloaded!' : 'Image export failed, try another format.');
       }
     };
   });
@@ -106,7 +106,7 @@ function renderTypeFilters(screen) {
   const all = getWatchlist();
   const counts = { all: all.length, movie: 0, tv: 0 };
   all.forEach((m) => { counts[m.mediaType === 'tv' ? 'tv' : 'movie']++; });
-  const options = [['all', 'Tutti', counts.all], ['movie', 'Film', counts.movie], ['tv', 'Serie TV', counts.tv]];
+  const options = [['all', 'All', counts.all], ['movie', 'Movies', counts.movie], ['tv', 'TV Shows', counts.tv]];
   container.innerHTML = options.map(([id, label, count]) => `
     <button data-type="${id}" class="type-chip flex-shrink-0 text-xs font-bold px-3 py-2 rounded-lg border ${typeFilter === id ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800 border-slate-700 text-slate-400'}">${label} <span class="opacity-70">${count}</span></button>
   `).join('');
@@ -119,7 +119,7 @@ function renderStatusFilters(screen) {
   const container = screen.querySelector('#status-filters');
   const all = getWatchlist();
   const watchedCount = all.filter((m) => m.watched).length;
-  const options = [['all', 'Tutti'], ['towatch', `Da vedere (${all.length - watchedCount})`], ['watched', `Guardati (${watchedCount})`]];
+  const options = [['all', 'All'], ['towatch', `To watch (${all.length - watchedCount})`], ['watched', `Watched (${watchedCount})`]];
   container.innerHTML = options.map(([id, label]) => `
     <button data-status="${id}" class="status-chip flex-shrink-0 text-xs font-bold px-3 py-2 rounded-lg border ${statusFilter === id ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800 border-slate-700 text-slate-400'}">${label}</button>
   `).join('');
@@ -164,7 +164,7 @@ function renderStats(screen, movies) {
   const ratings = movies.map((m) => parseFloat(m.vote_average)).filter((n) => !Number.isNaN(n));
   const avg = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '—';
   const shown = movies.length;
-  statsEl.innerHTML = `<span class="font-bold text-slate-300">${shown}</span> titol${shown === 1 ? 'o' : 'i'}${shown !== total ? ` su ${total}` : ''} · rating medio <span class="font-bold text-slate-300">⭐ ${avg}</span>`;
+  statsEl.innerHTML = `<span class="font-bold text-slate-300">${shown}</span> title${shown === 1 ? '' : 's'}${shown !== total ? ` of ${total}` : ''} · avg rating <span class="font-bold text-slate-300">⭐ ${avg}</span>`;
 }
 
 function renderItems(screen) {
@@ -173,11 +173,11 @@ function renderItems(screen) {
   renderStats(screen, movies);
 
   if (!getWatchlist().length) {
-    container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8"><i class="fa-solid fa-bookmark text-4xl mb-4"></i><p class="font-semibold">La Watchlist è vuota.</p><p class="text-sm mt-2">Metti Mi piace in Solo o salva un suggerimento.</p></div>';
+    container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8"><i class="fa-solid fa-bookmark text-4xl mb-4"></i><p class="font-semibold">Your Watchlist is empty.</p><p class="text-sm mt-2">Like something in Solo or save a suggestion.</p></div>';
     return;
   }
   if (!movies.length) {
-    container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8"><i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i><p class="font-semibold">Nessun risultato.</p><p class="text-sm mt-2">Prova a cambiare ricerca o filtro.</p></div>';
+    container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8"><i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i><p class="font-semibold">No results.</p><p class="text-sm mt-2">Try changing your search or filter.</p></div>';
     return;
   }
 
@@ -189,7 +189,7 @@ function renderItems(screen) {
       <div class="flex flex-wrap items-center gap-1.5 mt-2">
         ${tags.map((tag) => `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300"><i class="fa-solid fa-tag text-[8px]"></i>${escapeHTML(tag)}<button data-remove-tag="${escapeHTML(tag)}" class="opacity-60 hover:opacity-100 hover:text-rose-400">×</button></span>`).join('')}
         ${isAddingTag
-          ? '<input class="tag-input bg-slate-900 border border-primary/50 rounded-full px-2 py-0.5 text-[11px] text-white w-24" maxlength="16" placeholder="nuovo tag">'
+          ? '<input class="tag-input bg-slate-900 border border-primary/50 rounded-full px-2 py-0.5 text-[11px] text-white w-24" maxlength="16" placeholder="new tag">'
           : '<button class="add-tag-btn text-[10px] font-bold text-slate-500 border border-dashed border-slate-600 rounded-full px-2 py-0.5 hover:text-slate-300 hover:border-slate-400">+ tag</button>'}
       </div>
     `;
@@ -202,17 +202,17 @@ function renderItems(screen) {
         <div class="min-w-0">
           <h3 class="font-bold truncate ${movie.watched ? 'text-slate-400' : ''}">${escapeHTML(movie.title)}</h3>
           <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-700 text-slate-300"><i class="fa-solid ${movie.mediaType === 'tv' ? 'fa-tv' : 'fa-film'} text-[9px]"></i>${movie.mediaType === 'tv' ? 'Serie TV' : 'Film'}</span>
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-700 text-slate-300"><i class="fa-solid ${movie.mediaType === 'tv' ? 'fa-tv' : 'fa-film'} text-[9px]"></i>${movie.mediaType === 'tv' ? 'TV Show' : 'Movie'}</span>
             <span class="text-xs text-slate-400">${movie.release_date?.substring(0, 4) || 'N/A'}</span>
-            ${movie.watched ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-600/20 text-emerald-400"><i class="fa-solid fa-check"></i>Guardato</span>' : ''}
+            ${movie.watched ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-600/20 text-emerald-400"><i class="fa-solid fa-check"></i>Watched</span>' : ''}
           </div>
           <p class="text-xs text-yellow-400 font-semibold mt-2">⭐ ${movie.vote_average}</p>
           ${tagsHTML}
         </div>
       </button>
       <div class="flex flex-col items-center gap-3 flex-shrink-0">
-        <button class="toggle-watched text-slate-500 hover:text-emerald-400 px-2" title="${movie.watched ? 'Segna come da vedere' : 'Segna come guardato'}" aria-label="Cambia stato visto"><i class="fa-solid ${movie.watched ? 'fa-rotate-left' : 'fa-eye'}"></i></button>
-        <button class="remove text-slate-500 hover:text-rose-400 px-2" aria-label="Rimuovi"><i class="fa-solid fa-trash"></i></button>
+        <button class="toggle-watched text-slate-500 hover:text-emerald-400 px-2" title="${movie.watched ? 'Mark as to watch' : 'Mark as watched'}" aria-label="Toggle watched status"><i class="fa-solid ${movie.watched ? 'fa-rotate-left' : 'fa-eye'}"></i></button>
+        <button class="remove text-slate-500 hover:text-rose-400 px-2" aria-label="Remove"><i class="fa-solid fa-trash"></i></button>
       </div>
     `;
 
@@ -225,7 +225,7 @@ function renderItems(screen) {
     item.querySelector('.remove').onclick = (e) => {
       e.stopPropagation();
       removeFromWatchlist(movie.id);
-      showToast('Rimosso dalla Watchlist');
+      showToast('Removed from Watchlist');
       refresh(screen);
       setHeaderBadge(`${getWatchlist().length}`);
     };
@@ -272,10 +272,10 @@ function wireTagInput(item, movie, tags, screen) {
 
 function surpriseMe(screen) {
   const pool = filteredMovies();
-  if (!pool.length) { showToast('Nessun titolo tra cui scegliere'); return; }
+  if (!pool.length) { showToast('No titles to choose from'); return; }
   const pick = pool[Math.floor(Math.random() * pool.length)];
   openDetails(pick);
-  showToast(`Stasera guardate: "${pick.title}"?`);
+  showToast(`Tonight you're watching: "${pick.title}"?`);
 }
 
 function renderNav(screen, onNavigate, active) { const nav = screen.querySelector('#mode-nav'); const items = [['solo', 'Solo', 'fa-user'], ['suggestion', 'Suggestion', 'fa-wand-magic-sparkles'], ['multiplayer', 'Multiplayer', 'fa-users'], ['watchlist', 'Watchlist', 'fa-bookmark']]; nav.innerHTML = items.map(([id, l, i]) => `<button data-mode="${id}" class="flex-1 flex flex-col items-center justify-center gap-1 ${active === id ? 'text-primary' : 'text-slate-500'}"><i class="fa-solid ${i}"></i><span class="text-[10px] font-bold">${l}</span></button>`).join(''); nav.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => onNavigate(b.dataset.mode === 'solo' ? 'filters' : b.dataset.mode)); }

@@ -258,7 +258,7 @@ export class Room {
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }));
     const likeEntries = Object.entries(this.stats.likesByPlayer)
-      .map(([clientId, count]) => ({ name: this.players.get(clientId)?.name || 'Ex giocatore', count }))
+      .map(([clientId, count]) => ({ name: this.players.get(clientId)?.name || 'Former player', count }))
       .sort((a, b) => b.count - a.count);
     return {
       sessions: this.stats.sessions,

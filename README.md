@@ -25,20 +25,22 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 - 📌 **Persistent rooms** — optionally make a room "fixed" for your regular group: the same code keeps working across movie nights and the room stays alive much longer than the default.
 - 🔌 **Resilient to disconnects** — a dropped connection doesn't stall or end the session: the game keeps moving among whoever's still connected, and a reconnecting player (Wi‑Fi blip, backgrounded tab) is seamlessly restored to their seat instead of being treated as a new player.
 - 👑 **Automatic host handover** — if the host disconnects, another connected player is instantly promoted so the room is never stuck waiting on someone who's gone.
-- 🪄 **"Decidi tu" fallback** — if the group repeatedly fails to reach a majority after several batches, CineMatch picks the best-liked title so far instead of swiping forever.
+- 🪄 **Auto-pick fallback** — if the group repeatedly fails to reach a majority after several batches, CineMatch picks the best-liked title so far instead of swiping forever.
 - 📊 **Group stats** — each room tracks sessions played, titles seen, matches found, favorite genres, and who's liked the most titles, shown in the lobby and results screen.
 - 🎯 **Group matching** — once everyone has voted on a title, CineMatch keeps the ones that reached a **majority** of likes (strictly more than half of the players), ranked by number of likes and consensus %.
 - 🧩 **Filters** — narrow discovery by content type, genre (include or exclude), language, era, runtime, and streaming platform.
 - 🔎 **TMDB search** — search for movies and TV shows as the starting point for recommendations.
 - ⭐ **Aggregated ratings** — TMDB rating always shown; IMDb, Rotten Tomatoes, and Metacritic scores are added automatically when an `OMDB_API_KEY` is configured.
-- 📺 **Streaming information** — when available, titles include Italian streaming providers.
+- 📺 **Streaming information** — when available, titles include streaming providers for your selected region.
 - ▶️ **Trailers** — available trailers can be opened from title details.
-- 👆 **Swipe gestures** — swipe right/left to like/skip, swipe up (or tap "Dettagli") to open a title's details, swipe down to close the details sheet.
+- 👆 **Swipe gestures** — swipe right/left to like/skip, swipe up (or tap "Details") to open a title's details, swipe down to close the details sheet.
 - ⏱️ **Vote timeout** — inactive multiplayer players are automatically treated as skipping a title.
 - 📱 **LAN support** — play together from phones connected to the same Wi-Fi network.
 - 🙋 **Remembered nickname** — your multiplayer nickname is saved locally and pre-filled next time.
 - 🧪 **Mock data mode** — run the app without a TMDB API key using local demo data (no external API calls at all).
-- 👋 **Quick onboarding** — a short, skippable 3-step intro shown on first visit explaining Solo/Suggestion/Multiplayer and a few tips; revisit it anytime from "Come funziona CineMatch?" on the mode-selection screen.
+- 👋 **Quick onboarding** — a short, skippable 4-step intro shown on first visit explaining Solo/Suggestion/Multiplayer, picking your region, and a few tips; revisit it anytime from "How does CineMatch work?" on the mode-selection screen.
+- 🌍 **Region setting** — choose your country (US, UK, Italy, France, ...) from Settings or during onboarding; it drives TMDB's content language and which streaming providers show up.
+- ⚙️ **Settings screen** — open it from the gear icon in the header to change your region or clear your hidden-titles list.
 
 ## 🖥️ How It Works
 
@@ -47,8 +49,8 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 1. Choose **Solo** from the bottom navigation.
 2. Configure your filters.
 3. Swipe through the generated deck.
-4. Swipe right or press **Mi piace** to save a title automatically to your Watchlist.
-5. Swipe up, or press **Dettagli**, to see the overview, ratings, streaming providers, and trailer for a title.
+4. Swipe right or press **Like** to save a title automatically to your Watchlist.
+5. Swipe up, or press **Details**, to see the overview, ratings, streaming providers, and trailer for a title.
 6. Tap the eye-slash icon on a card to permanently hide that title from future decks.
 7. If you reach the end of a batch without liking anything, CineMatch automatically loads the next batch of titles with the same filters.
 8. Open the Watchlist whenever you want to review, sort, or remove your saved titles.
@@ -73,7 +75,7 @@ Suggestion mode is intentionally separate from Solo discovery: **recommendations
 6. When all players have voted, CineMatch moves to the next title.
 7. If the whole batch is swiped without any title reaching a majority, CineMatch automatically fetches the next batch of titles.
 8. At the end, the group sees every title that got a **majority of likes** (strictly more than half the players), ranked by number of likes and consensus percentage — with the top match highlighted.
-9. If the group still can't agree after several batches in a row, CineMatch's **"Decidi tu"** fallback steps in and picks the best-liked title found so far, so the night doesn't end in an endless swipe loop.
+9. If the group still can't agree after several batches in a row, CineMatch's auto-pick fallback steps in and picks the best-liked title found so far, so the night doesn't end in an endless swipe loop.
 
 Rooms support up to **8 players** and automatically expire after a period of inactivity — unless created as a **persistent room** (see below), which stays alive much longer and can go dormant and be reused later under the same code.
 
@@ -81,7 +83,7 @@ If a player's connection drops mid-session (Wi‑Fi hiccup, phone lock, backgrou
 
 #### Persistent rooms
 
-When creating a room, the host can check **"Stanza fissa per il gruppo"**. A persistent room:
+When creating a room, the host can check **"Fixed room for the group"**. A persistent room:
 
 - Keeps its 4-letter code reusable across separate movie nights — no need to create a new room each time.
 - Stays alive in memory far longer than a regular room (weeks of inactivity vs. 2 hours), though it does **not** survive a server restart.
@@ -96,12 +98,19 @@ Every room tracks how many sessions it has hosted, how many titles were swiped, 
 
 The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time.
 
-- **Search & filter** — use the search box, the type chips (Tutti / Film / Serie TV), and the "Da vedere / Guardati" status chips to narrow down a long list.
-- **Tags** — add free-form tags to any saved title (e.g. "coppia", "da vedere insieme") via the "+ tag" button; click the tag chips above the list to filter by one.
+- **Search & filter** — use the search box, the type chips (All / Movies / TV Shows), and the "To watch / Watched" status chips to narrow down a long list.
+- **Tags** — add free-form tags to any saved title (e.g. "date night", "watch together") via the "+ tag" button; click the tag chips above the list to filter by one.
 - **Mark as watched** — toggle a title as watched instead of removing it, so you keep a record of what you've already seen.
-- **Export** — the "Esporta" menu lets you copy the whole Watchlist as Markdown text (handy to paste in a chat), download it as JSON (for backup or reuse), or download a shareable PNG image card.
-- **Sorpresa** — still can't decide? Hit **Sorpresa** to have CineMatch pick a random title from your current filter for you.
+- **Export** — the "Export" menu lets you copy the whole Watchlist as Markdown text (handy to paste in a chat), download it as JSON (for backup or reuse), or download a shareable PNG image card.
+- **Surprise me** — still can't decide? Hit **Surprise me** to have CineMatch pick a random title from your current filter for you.
 - The stats line always shows a quick count and average rating for whatever's currently in view.
+
+### Settings
+
+Tap the gear icon in the header from anywhere in the app to open Settings:
+
+- **Region** — pick your country to match streaming availability and content language to where you live.
+- **Hidden titles** — see how many titles you've hidden from swipe decks and clear that list in one tap, so they can show up again.
 
 ### Installing CineMatch (PWA)
 
@@ -234,7 +243,7 @@ CineMatch can be played from other devices connected to the same local network.
 Start the server and look at the terminal output. CineMatch detects the machine's local IPv4 addresses and prints a URL such as:
 
 ```text
-Rete: http://192.168.1.42:3000
+Network: http://192.168.1.42:3000
 ```
 
 Open that address from your phone or another device connected to the same Wi-Fi network.
@@ -245,17 +254,17 @@ Open that address from your phone or another device connected to the same Wi-Fi 
 
 Returns basic runtime configuration, including whether mock data is enabled and the server's LAN addresses.
 
-### `GET /api/search?q=<query>`
+### `GET /api/search?q=<query>&region=<US|GB|IT|...>`
 
-Searches TMDB for movies and TV shows matching the query.
+Searches TMDB for movies and TV shows matching the query, localized to the given region (defaults to `US`).
 
-### `GET /api/recommendations?id=<id>&mediaType=<movie|tv>`
+### `GET /api/recommendations?id=<id>&mediaType=<movie|tv>&region=<US|GB|IT|...>`
 
 Returns similar titles for a selected movie or TV show. This powers Suggestion mode while keeping the TMDB API key on the server.
 
 ### `POST /api/discover`
 
-Builds a personalized discovery deck from the selected filters. This powers Solo mode.
+Builds a personalized discovery deck from the selected filters, including a `region` field. This powers Solo mode.
 
 ## 🎮 Multiplayer Events
 
@@ -282,9 +291,10 @@ The main server configuration includes:
 - **Room lifetime:** `2 hours` of inactivity for regular rooms, `30 days` for persistent rooms (expired rooms are cleaned up every 10 minutes; both are in-memory only and reset on server restart)
 - **Reconnect grace period:** `30 seconds` — a disconnected player can rejoin their exact seat within this window before being removed
 - **Vote timeout:** `45 seconds`
-- **"Decidi tu" threshold:** after `3` batches in a row with no majority match, CineMatch picks the best-liked title found so far
+- **Auto-pick threshold:** after `3` batches in a row with no majority match, CineMatch picks the best-liked title found so far
 - **Deck size:** `10 titles` per batch (Solo and Multiplayer automatically load another batch when needed)
 - **Mock data:** enabled automatically when no TMDB API key is available
+- **Default region:** `US` (changeable anytime in Settings or onboarding); supported regions are US, GB, CA, AU, IT, FR, DE, ES
 
 ## 🔐 Environment Variables
 
@@ -312,7 +322,7 @@ Some ideas for future iterations:
 - [ ] Persistent user profiles and preferences
 - [ ] Shareable result pages
 - [ ] More sophisticated recommendation algorithms
-- [ ] Additional streaming providers and regions
+- [x] Regional support *(8 regions for content language & streaming availability; still flatrate-only, no rental/purchase providers)*
 - [x] Improved mobile UX / PWA support
 - [x] Persistent multiplayer rooms *(in-memory; doesn't yet survive a server restart)*
 - [ ] Cross-device Watchlist sync

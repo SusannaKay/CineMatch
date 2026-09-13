@@ -14,7 +14,7 @@ export function renderFilters(onNavigate) {
       <div class="flex-grow flex flex-col p-6 overflow-hidden">
         <div class="flex justify-between items-center mb-4">
           <button id="btn-back-f" class="text-slate-400 p-2"><i class="fa-solid fa-arrow-left text-xl"></i></button>
-          <div class="text-xs font-bold text-slate-500 tracking-widest uppercase">Passo ${filterStep + 1}/${qList.length}</div>
+          <div class="text-xs font-bold text-slate-500 tracking-widest uppercase">Step ${filterStep + 1}/${qList.length}</div>
           <button id="btn-exclude" class="hidden text-xs font-bold px-3 py-1.5 rounded-full border border-slate-600"></button>
         </div>
         <h2 id="q-text" class="text-2xl font-extrabold mb-6"></h2>
@@ -34,7 +34,7 @@ export function renderFilters(onNavigate) {
   if (q.isGenreStep && q.excludable) {
     excludeBtn.classList.remove('hidden');
     const excl = answers.genreMode === 'exclude';
-    excludeBtn.innerHTML = `<i class="fa-solid fa-filter-circle-xmark mr-1"></i>Escludi${excl ? ' (On)' : ''}`;
+    excludeBtn.innerHTML = `<i class="fa-solid fa-filter-circle-xmark mr-1"></i>Exclude${excl ? ' (On)' : ''}`;
     excludeBtn.classList.toggle('text-rose-500', excl);
     excludeBtn.onclick = () => {
       answers.genreMode = excl ? 'include' : 'exclude';
@@ -71,7 +71,7 @@ export function renderFilters(onNavigate) {
   if (q.isGenreStep && q.excludable) {
     const t = document.createElement('button');
     t.className = 'w-full py-3 text-sm font-bold text-slate-400 border border-dashed border-slate-700 rounded-xl';
-    t.textContent = showAllGenres ? 'Categorie rapide' : 'Mostra tutti i generi';
+    t.textContent = showAllGenres ? 'Quick categories' : 'Show all genres';
     t.onclick = () => {
       appState.showAllGenres = !appState.showAllGenres;
       renderFilters(onNavigate);
@@ -82,7 +82,7 @@ export function renderFilters(onNavigate) {
   if (q.multiSelect) {
     const actions = document.createElement('div');
     actions.className = 'flex gap-4 mt-4 flex-shrink-0';
-    actions.innerHTML = '<button id="btn-skip" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-4 rounded-full">Salta</button><button id="btn-confirm" class="w-2/3 bg-primary text-white font-bold py-4 rounded-full">Conferma</button>';
+    actions.innerHTML = '<button id="btn-skip" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-4 rounded-full">Skip</button><button id="btn-confirm" class="w-2/3 bg-primary text-white font-bold py-4 rounded-full">Confirm</button>';
     optionsEl.appendChild(actions);
     actions.querySelector('#btn-skip').onclick = () => handleAnswer(q.id, [], qList, onNavigate);
     actions.querySelector('#btn-confirm').onclick = () => handleAnswer(q.id, [...appState.tempSelections], qList, onNavigate);
@@ -118,18 +118,18 @@ async function handleAnswer(qId, value, qList, onNavigate) {
       const r = await fetch('/api/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...answers })
+        body: JSON.stringify({ ...answers, region: appState.region })
       });
       if (!r.ok) throw new Error();
       appState.soloMovies = await r.json();
       if (!appState.soloMovies.length) throw new Error('empty');
       onNavigate('solo');
     } catch (err) {
-      showToast(err.message === 'empty' ? 'Nessun titolo trovato.' : 'Errore nel caricamento dei titoli.');
+      showToast(err.message === 'empty' ? 'No titles found.' : 'Error loading titles.');
     }
     return;
   }
-  setFilters({ ...answers });
+  setFilters({ ...answers, region: appState.region });
   onNavigate('lobby');
 }
 

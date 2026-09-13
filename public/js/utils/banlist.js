@@ -13,7 +13,7 @@ function writeIds(set) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
   } catch {
-    /* storage non disponibile */
+    /* storage unavailable */
   }
 }
 

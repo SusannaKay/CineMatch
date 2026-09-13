@@ -31,14 +31,14 @@ app.get('/api/config', (_req, res) => res.json({ useMockData: tmdbConfig.useMock
 app.get('/api/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2) return res.json([]);
-  try { res.json(await searchMulti(q)); } catch { res.status(500).json({ error: 'search_failed' }); }
+  try { res.json(await searchMulti(q, req.query.region)); } catch { res.status(500).json({ error: 'search_failed' }); }
 });
 
 app.get('/api/recommendations', async (req, res) => {
   const id = Number(req.query.id);
   const mediaType = String(req.query.mediaType || 'movie');
   if (!Number.isInteger(id) || id <= 0 || !['movie', 'tv'].includes(mediaType)) return res.status(400).json({ error: 'invalid_title' });
-  try { res.json(await getRecommendations(id, mediaType)); } catch (err) { console.error(err); res.status(500).json({ error: 'recommendations_failed' }); }
+  try { res.json(await getRecommendations(id, mediaType, req.query.region)); } catch (err) { console.error(err); res.status(500).json({ error: 'recommendations_failed' }); }
 });
 
 app.post('/api/discover', async (req, res) => {
@@ -130,7 +130,7 @@ io.on('connection', (socket) => {
   }
 
   socket.on('room:create', ({ name, clientId, persistent }) => {
-    if (!clientId) return socket.emit('room:error', { message: 'Sessione non valida, ricarica la pagina.' });
+    if (!clientId) return socket.emit('room:error', { message: 'Invalid session, please reload the page.' });
     const displayName = String(name || 'Host').trim().slice(0, 20) || 'Host';
     const room = rooms.createRoom(!!persistent);
     room.addPlayer(clientId, socket.id, displayName);
@@ -140,10 +140,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:join', ({ code, name, clientId }) => {
-    if (!clientId) return socket.emit('room:error', { message: 'Sessione non valida, ricarica la pagina.' });
+    if (!clientId) return socket.emit('room:error', { message: 'Invalid session, please reload the page.' });
     const room = rooms.getRoom(code);
-    const displayName = String(name || 'Ospite').trim().slice(0, 20) || 'Ospite';
-    if (!room) return socket.emit('room:error', { message: 'Stanza non trovata. Controlla il codice.' });
+    const displayName = String(name || 'Guest').trim().slice(0, 20) || 'Guest';
+    if (!room) return socket.emit('room:error', { message: 'Room not found. Check the code.' });
 
     const existing = room.players.get(clientId);
     if (existing) {
@@ -156,8 +156,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.status !== 'lobby') return socket.emit('room:error', { message: 'La sessione è già iniziata.' });
-    if (room.playerCount() >= 8) return socket.emit('room:error', { message: 'Stanza piena (max 8 giocatori).' });
+    if (room.status !== 'lobby') return socket.emit('room:error', { message: 'The session has already started.' });
+    if (room.playerCount() >= 8) return socket.emit('room:error', { message: 'Room is full (max 8 players).' });
     room.addPlayer(clientId, socket.id, displayName);
     rooms.bindSocket(socket.id, room.id, clientId);
     socket.join(room.id);
@@ -184,8 +184,8 @@ io.on('connection', (socket) => {
   socket.on('room:start', async () => {
     const { room, clientId } = currentRoomAndClient();
     if (!room || !clientId || !room.isHost(clientId)) return;
-    if (room.playerCount() < 2) return socket.emit('room:error', { message: 'Servono almeno 2 giocatori per iniziare.' });
-    if (!room.filters?.type) return socket.emit('room:error', { message: 'Configura prima i filtri di ricerca.' });
+    if (room.playerCount() < 2) return socket.emit('room:error', { message: 'You need at least 2 players to start.' });
+    if (!room.filters?.type) return socket.emit('room:error', { message: 'Set up the search filters first.' });
     room.resetSession();
     room.status = 'loading'; emitRoom(room);
     try {
@@ -194,9 +194,9 @@ io.on('connection', (socket) => {
       room.nextPage += 1;
       room.currentIndex = 0;
       room.votes.clear();
-      if (!room.deck.length) { room.status = 'lobby'; socket.emit('room:error', { message: 'Nessun titolo trovato. Prova filtri diversi.' }); emitRoom(room); return; }
+      if (!room.deck.length) { room.status = 'lobby'; socket.emit('room:error', { message: 'No titles found. Try different filters.' }); emitRoom(room); return; }
       room.status = 'swiping'; startVoteTimer(room); emitRoom(room);
-    } catch (err) { console.error(err); room.status = 'lobby'; socket.emit('room:error', { message: 'Errore nel caricamento dei titoli.' }); emitRoom(room); }
+    } catch (err) { console.error(err); room.status = 'lobby'; socket.emit('room:error', { message: 'Error loading titles.' }); emitRoom(room); }
   });
 
   socket.on('vote:cast', ({ vote }) => {
@@ -233,4 +233,4 @@ io.on('connection', (socket) => {
 });
 
 setInterval(() => rooms.cleanupExpired(), 10 * 60 * 1000);
-httpServer.listen(config.port, '0.0.0.0', () => { console.log(`\nCineMatch avviato`); console.log(`  Locale:  http://localhost:${config.port}`); for (const ip of getLanAddresses()) console.log(`  Rete:    http://${ip}:${config.port}  ← usa questo dal telefono`); console.log(`  Dati:    ${config.useMockData ? 'DEMO (mock)' : 'TMDB live'}\n`); });
+httpServer.listen(config.port, '0.0.0.0', () => { console.log(`\nCineMatch is running`); console.log(`  Local:   http://localhost:${config.port}`); for (const ip of getLanAddresses()) console.log(`  Network: http://${ip}:${config.port}  ← use this from your phone`); console.log(`  Data:    ${config.useMockData ? 'DEMO (mock)' : 'TMDB live'}\n`); });

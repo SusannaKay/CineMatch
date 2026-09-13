@@ -31,7 +31,7 @@ export function getSocket() {
       appState.localVoteCast = room.hasVoted ?? false;
       if (previousHostId && room.hostId && previousHostId !== room.hostId) {
         const newHost = room.players.find((p) => p.id === room.hostId);
-        showToast(newHost ? `${newHost.name} è ora host della stanza` : 'L\'host della stanza è cambiato');
+        showToast(newHost ? `${newHost.name} is now the room host` : 'The room host has changed');
       }
       listeners.forEach((fn) => fn(room));
     });
