@@ -38,6 +38,7 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 - 📱 **LAN support** — play together from phones connected to the same Wi-Fi network.
 - 🙋 **Remembered nickname** — your multiplayer nickname is saved locally and pre-filled next time.
 - 🧪 **Mock data mode** — run the app without a TMDB API key using local demo data (no external API calls at all).
+- 👋 **Quick onboarding** — a short, skippable 3-step intro shown on first visit explaining Solo/Suggestion/Multiplayer and a few tips; revisit it anytime from "Come funziona CineMatch?" on the mode-selection screen.
 
 ## 🖥️ How It Works
 
