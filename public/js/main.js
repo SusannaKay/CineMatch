@@ -8,8 +8,10 @@ import { renderResults } from './screens/results.js';
 import { renderSolo } from './screens/solo.js';
 import { renderSuggestion } from './screens/suggestion.js';
 import { renderWatchlist } from './screens/watchlist.js';
+import { renderOnboarding } from './screens/onboarding.js';
 import './screens/details.js';
 
+const ONBOARDING_SEEN_KEY = 'cinematch_onboarding_seen';
 let currentScreen = 'welcome';
 
 function navigate(screen) {
@@ -38,6 +40,12 @@ function navigate(screen) {
 
 function render() {
   const room = appState.room;
+  if (currentScreen === 'onboarding') {
+    return renderOnboarding(() => {
+      localStorage.setItem(ONBOARDING_SEEN_KEY, '1');
+      navigate('welcome');
+    });
+  }
   if (currentScreen === 'welcome') return renderWelcome(navigate);
   if (currentScreen === 'join') return renderJoin(navigate);
   if (currentScreen === 'filters') return renderFilters(navigate);
@@ -118,6 +126,12 @@ async function init() {
   if (roomFromQr) {
     appState.prefillRoomCode = roomFromQr.toUpperCase().slice(0, 4);
     navigate('join');
+    return;
+  }
+
+  if (!localStorage.getItem(ONBOARDING_SEEN_KEY)) {
+    currentScreen = 'onboarding';
+    render();
     return;
   }
 
