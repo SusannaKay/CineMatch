@@ -14,15 +14,15 @@ function voterList(voters) {
 function statsPanelHTML(stats) {
   if (!stats || stats.titlesSeen === 0) return '';
   const genresHTML = stats.topGenres?.length
-    ? `<p class="mt-2"><i class="fa-solid fa-tags text-primary mr-1.5"></i>Generi preferiti: <span class="font-bold text-white">${stats.topGenres.map((g) => g.name).join(', ')}</span></p>`
+    ? `<p class="mt-2"><i class="fa-solid fa-tags text-primary mr-1.5"></i>Favorite genres: <span class="font-bold text-white">${stats.topGenres.map((g) => g.name).join(', ')}</span></p>`
     : '';
   const likerHTML = stats.topLiker
-    ? `<p class="mt-2"><i class="fa-solid fa-heart text-primary mr-1.5"></i><span class="font-bold text-white">${escapeHTML(stats.topLiker.name)}</span> ha messo più "Mi piace" di tutti (${stats.topLiker.count})</p>`
+    ? `<p class="mt-2"><i class="fa-solid fa-heart text-primary mr-1.5"></i><span class="font-bold text-white">${escapeHTML(stats.topLiker.name)}</span> liked the most titles (${stats.topLiker.count})</p>`
     : '';
   return `
     <div class="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 mb-6 text-sm text-slate-300 flex-shrink-0">
-      <p class="font-bold text-white text-xs uppercase tracking-wide mb-1"><i class="fa-solid fa-chart-simple text-primary mr-1.5"></i>Statistiche di gruppo</p>
-      <p>${stats.sessions} serat${stats.sessions === 1 ? 'a' : 'e'} · ${stats.titlesSeen} titoli visti · ${stats.matches} match trovati</p>
+      <p class="font-bold text-white text-xs uppercase tracking-wide mb-1"><i class="fa-solid fa-chart-simple text-primary mr-1.5"></i>Group stats</p>
+      <p>${stats.sessions} session${stats.sessions === 1 ? '' : 's'} · ${stats.titlesSeen} titles seen · ${stats.matches} matches found</p>
       ${genresHTML}
       ${likerHTML}
     </div>
@@ -38,9 +38,9 @@ export function renderResults(room, onNavigate) {
     <div class="flex-grow flex flex-col overflow-y-auto p-6">
       <div class="text-center mb-6">
         <i class="fa-solid ${decided ? 'fa-wand-magic-sparkles' : 'fa-champagne-glasses'} text-5xl text-primary mb-3"></i>
-        <h2 class="text-2xl font-extrabold">${decided ? 'Non riuscivate a decidere...' : 'Risultati della serata'}</h2>
+        <h2 class="text-2xl font-extrabold">${decided ? "Couldn't decide..." : "Tonight's results"}</h2>
         <p class="text-slate-400 text-sm mt-2">
-          ${decided ? 'Il gruppo non ha trovato un accordo dopo diversi tentativi: ci pensa CineMatch! 🪄' : `Match = almeno ${threshold} su ${room.players.length} hanno messo ❤️`}
+          ${decided ? "The group couldn't agree after several tries, so CineMatch picked for you! 🪄" : `Match = at least ${threshold} out of ${room.players.length} liked it ❤️`}
         </p>
       </div>
 
@@ -51,17 +51,17 @@ export function renderResults(room, onNavigate) {
       <div class="space-y-3 pt-6 flex-shrink-0">
         ${room.isHost ? `
           <button id="btn-restart" class="w-full bg-primary hover:bg-rose-700 text-white font-bold py-4 rounded-full">
-            Nuova sessione
+            New session
           </button>
         ` : ''}
         <button id="btn-exit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold py-3 rounded-full text-sm">
-          Esci
+          Exit
         </button>
       </div>
     </div>
   `);
 
-  setHeaderBadge(`Stanza ${room.id}`);
+  setHeaderBadge(`Room ${room.id}`);
 
   const list = document.getElementById('results-list');
 
@@ -69,8 +69,8 @@ export function renderResults(room, onNavigate) {
     list.innerHTML = `
       <div class="text-center py-12 text-slate-500">
         <i class="fa-solid fa-ghost text-4xl mb-3"></i>
-        <p class="font-semibold text-slate-400">Nessun match in maggioranza</p>
-        <p class="text-sm mt-2">Provate con filtri più ampi o ricominciate!</p>
+        <p class="font-semibold text-slate-400">No majority match</p>
+        <p class="text-sm mt-2">Try broader filters or start over!</p>
       </div>
     `;
   } else {
@@ -81,10 +81,10 @@ export function renderResults(room, onNavigate) {
         <div class="flex gap-3 p-3">
           <img src="${r.movie.poster_path}" alt="${r.movie.title}" class="w-20 h-28 object-cover rounded-lg flex-shrink-0">
           <div class="flex-grow min-w-0">
-            <span class="text-xs font-bold text-primary uppercase tracking-wide">${decided ? '✨ Scelto per voi' : (i === 0 ? 'Top match' : '')}</span>
+            <span class="text-xs font-bold text-primary uppercase tracking-wide">${decided ? '✨ Picked for you' : (i === 0 ? 'Top match' : '')}</span>
             <h3 class="font-extrabold text-lg leading-tight">${r.movie.title}</h3>
             <p class="text-sm text-emerald-400 font-bold mt-1">
-              <i class="fa-solid fa-heart mr-1"></i>${r.likes}/${r.total} · ${r.consensus}% consenso
+              <i class="fa-solid fa-heart mr-1"></i>${r.likes}/${r.total} · ${r.consensus}% consensus
             </p>
             <div class="mt-2 flex flex-wrap gap-y-1">${voterList(r.voters)}</div>
           </div>
@@ -93,7 +93,7 @@ export function renderResults(room, onNavigate) {
           <div class="px-3 pb-3">
             <a href="https://www.youtube.com/watch?v=${r.movie.trailerKey}" target="_blank"
               class="block text-center text-sm font-bold text-primary py-2 bg-slate-900 rounded-lg">
-              <i class="fa-brands fa-youtube mr-1"></i> Guarda il trailer
+              <i class="fa-brands fa-youtube mr-1"></i> Watch trailer
             </a>
           </div>
         ` : ''}

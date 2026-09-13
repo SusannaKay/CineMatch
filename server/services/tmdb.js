@@ -1,12 +1,12 @@
 import { config } from '../config.js';
 import { mockMovies } from '../data/mockMovies.js';
-import { genreNamesFromIds } from '../data/genres.js';
+import { sanitizeRegion, languageForRegion } from '../data/regions.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
-async function tmdbFetch(path) {
+async function tmdbFetch(path, region) {
   const sep = path.includes('?') ? '&' : '?';
-  const url = `${TMDB_BASE}${path}${sep}api_key=${config.tmdbApiKey}&language=it-IT`;
+  const url = `${TMDB_BASE}${path}${sep}api_key=${config.tmdbApiKey}&language=${languageForRegion(region)}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`TMDB ${res.status}`);
   return res.json();
@@ -35,7 +35,7 @@ function sortByRating(movies) {
   return [...movies].sort((a, b) => (parseFloat(b.vote_average) || 0) - (parseFloat(a.vote_average) || 0));
 }
 
-async function enrichMovie(m, endpoint) {
+async function enrichMovie(m, endpoint, region) {
   let providers = [];
   let trailerKey = null;
   let imdbId = null;
@@ -46,9 +46,9 @@ async function enrichMovie(m, endpoint) {
   let backdrop_path = m.backdrop_path ? `https://image.tmdb.org/t/p/w780${m.backdrop_path}` : null;
 
   try {
-    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids,credits`);
-    const itProviders = d['watch/providers']?.results?.IT?.flatrate || [];
-    providers = itProviders.map((p) => ({
+    const d = await tmdbFetch(`/${endpoint}/${m.id}?append_to_response=watch/providers,videos,external_ids,credits`, region);
+    const regionProviders = d['watch/providers']?.results?.[region]?.flatrate || [];
+    providers = regionProviders.map((p) => ({
       name: p.provider_name,
       logo: `https://image.tmdb.org/t/p/w92${p.logo_path}`,
     }));
@@ -63,7 +63,7 @@ async function enrichMovie(m, endpoint) {
       : (d.credits?.crew || []).find((c) => c.job === 'Director')?.name || null;
     cast = (d.credits?.cast || []).slice(0, 5).map((c) => c.name);
   } catch {
-    /* enrichment opzionale */
+    /* enrichment is best-effort */
   }
 
   const { imdbRating, rottenTomatoes, metacritic } = await fetchOmdbRatings(imdbId);
@@ -71,9 +71,8 @@ async function enrichMovie(m, endpoint) {
   return {
     id: m.id,
     mediaType: endpoint === 'tv' ? 'tv' : 'movie',
-    genres: genreNamesFromIds(m.genre_ids),
     title: m.title || m.name,
-    overview: m.overview || 'Trama non disponibile.',
+    overview: m.overview || 'No overview available.',
     poster_path: m.poster_path
       ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${m.poster_path}`
       : 'https://placehold.co/600x900/1e293b/ffffff?text=No+Poster',
@@ -92,10 +91,10 @@ async function enrichMovie(m, endpoint) {
   };
 }
 
-function buildDiscoverUrl(filters, page) {
+function buildDiscoverUrl(filters, page, region) {
   const type = filters.type || 'movie';
   const endpoint = type === 'tv' || type === 'anime' ? 'tv' : 'movie';
-  let url = `/discover/${endpoint}?sort_by=popularity.desc&include_adult=false&include_video=false&page=${page}&watch_region=IT&with_watch_monetization_types=flatrate`;
+  let url = `/discover/${endpoint}?sort_by=popularity.desc&include_adult=false&include_video=false&page=${page}&watch_region=${region}&with_watch_monetization_types=flatrate`;
 
   if (filters.platforms?.length) url += `&with_watch_providers=${filters.platforms.join('|')}`;
   if (filters.language) url += `&with_original_language=${filters.language}`;
@@ -126,6 +125,7 @@ function buildDiscoverUrl(filters, page) {
 }
 
 export async function buildDeck(filters, size = config.deckSize, startPage = 1) {
+  const region = sanitizeRegion(filters.region);
   const firstPage = Math.max(1, Number(startPage) || 1);
 
   if (config.useMockData) {
@@ -141,13 +141,13 @@ export async function buildDeck(filters, size = config.deckSize, startPage = 1) 
 
   const movies = [];
   let page = firstPage;
-  const { url: basePath, endpoint } = buildDiscoverUrl(filters, page);
+  const { url: basePath, endpoint } = buildDiscoverUrl(filters, page, region);
 
   while (movies.length < size && page < firstPage + 5) {
     const path = basePath.replace(/page=\d+/, `page=${page}`);
-    const data = await tmdbFetch(path);
+    const data = await tmdbFetch(path, region);
     const valid = (data.results || []).filter((m) => m.poster_path);
-    const enriched = await Promise.all(valid.map((m) => enrichMovie(m, endpoint)));
+    const enriched = await Promise.all(valid.map((m) => enrichMovie(m, endpoint, region)));
     movies.push(...enriched);
     page++;
   }
@@ -155,7 +155,7 @@ export async function buildDeck(filters, size = config.deckSize, startPage = 1) 
   return sortByRating(movies.slice(0, size));
 }
 
-export async function searchMulti(query) {
+export async function searchMulti(query, region) {
   if (config.useMockData) {
     return mockMovies.slice(0, 4).map((m) => ({
       id: m.id,
@@ -166,7 +166,7 @@ export async function searchMulti(query) {
     }));
   }
 
-  const data = await tmdbFetch(`/search/multi?query=${encodeURIComponent(query)}`);
+  const data = await tmdbFetch(`/search/multi?query=${encodeURIComponent(query)}`, sanitizeRegion(region));
   return (data.results || [])
     .filter((i) => i.media_type === 'movie' || i.media_type === 'tv')
     .slice(0, 8)
@@ -179,8 +179,9 @@ export async function searchMulti(query) {
     }));
 }
 
-export async function getRecommendations(id, mediaType) {
+export async function getRecommendations(id, mediaType, region) {
   const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+  const safeRegion = sanitizeRegion(region);
 
   if (config.useMockData) {
     return sortByRating(mockMovies
@@ -188,9 +189,9 @@ export async function getRecommendations(id, mediaType) {
       .slice(0, 6));
   }
 
-  const data = await tmdbFetch(`/${endpoint}/${id}/recommendations?page=1`);
+  const data = await tmdbFetch(`/${endpoint}/${id}/recommendations?page=1`, safeRegion);
   const valid = (data.results || []).filter((movie) => movie.poster_path).slice(0, 12);
-  const enriched = await Promise.all(valid.map((movie) => enrichMovie(movie, endpoint)));
+  const enriched = await Promise.all(valid.map((movie) => enrichMovie(movie, endpoint, safeRegion)));
   return sortByRating(enriched);
 }
 

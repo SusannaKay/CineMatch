@@ -1,14 +1,14 @@
 {
-  "name": "CineMatch — Cosa guardiamo stasera?",
+  "name": "CineMatch — What Should We Watch Tonight?",
   "short_name": "CineMatch",
-  "description": "Scopri, salva e trova insieme il film o la serie perfetta per stasera.",
+  "description": "Discover, save, and find the perfect movie or show together.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "orientation": "portrait",
-  "lang": "it",
+  "lang": "en",
   "icons": [
     { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }

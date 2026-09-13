@@ -39,7 +39,7 @@ export function openDetails(movie) {
   let providersHTML = '';
   if (movie.providers?.length) {
     providersHTML = `
-      <h3 class="font-bold text-slate-300 mb-3 mt-6">Disponibile su:</h3>
+      <h3 class="font-bold text-slate-300 mb-3 mt-6">Available on:</h3>
       <div class="flex flex-wrap gap-3">
         ${movie.providers.map((p) => `
           <div class="flex items-center bg-slate-800 rounded-lg p-2 border border-slate-700">
@@ -68,7 +68,7 @@ export function openDetails(movie) {
     : '';
   const creditsHTML = (movie.director || movie.cast?.length)
     ? `<div class="mt-6 space-y-1">
-        ${movie.director ? `<p class="text-sm text-slate-400"><span class="font-bold text-slate-300">Regia:</span> ${movie.director}</p>` : ''}
+        ${movie.director ? `<p class="text-sm text-slate-400"><span class="font-bold text-slate-300">Director:</span> ${movie.director}</p>` : ''}
         ${movie.cast?.length ? `<p class="text-sm text-slate-400"><span class="font-bold text-slate-300">Cast:</span> ${movie.cast.join(', ')}</p>` : ''}
       </div>`
     : '';
@@ -83,7 +83,7 @@ export function openDetails(movie) {
     <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-700 pb-4">
       ${ratingBadgesHTML(movie)}
     </div>
-    <h3 class="font-bold text-slate-300 mb-2">Trama</h3>
+    <h3 class="font-bold text-slate-300 mb-2">Overview</h3>
     <p class="text-slate-400 leading-relaxed text-sm">${movie.overview}</p>
     ${creditsHTML}
     ${providersHTML}

@@ -10,7 +10,7 @@ function downloadBlob(blob, filename) {
 }
 
 function itemLine(movie) {
-  const type = movie.mediaType === 'tv' ? 'Serie TV' : 'Film';
+  const type = movie.mediaType === 'tv' ? 'TV Show' : 'Movie';
   const year = movie.release_date?.substring(0, 4) || 'N/A';
   const tags = movie.tags?.length ? ` — 🏷 ${movie.tags.join(', ')}` : '';
   const watched = movie.watched ? ' ✅' : '';
@@ -19,9 +19,9 @@ function itemLine(movie) {
 
 export function buildMarkdown(movies) {
   const lines = [
-    '# La mia Watchlist — CineMatch',
+    '# My Watchlist — CineMatch',
     '',
-    `${movies.length} titol${movies.length === 1 ? 'o' : 'i'} salvat${movies.length === 1 ? 'o' : 'i'}`,
+    `${movies.length} title${movies.length === 1 ? '' : 's'} saved`,
     '',
     ...movies.map(itemLine),
   ];
@@ -86,10 +86,10 @@ export async function exportAsImage(movies, { limit = 12 } = {}) {
 
   ctx.fillStyle = '#e11d48';
   ctx.font = 'bold 34px Inter, sans-serif';
-  ctx.fillText('🎬 La mia Watchlist', 40, 60);
+  ctx.fillText('🎬 My Watchlist', 40, 60);
   ctx.fillStyle = '#94a3b8';
   ctx.font = '600 18px Inter, sans-serif';
-  ctx.fillText(`CineMatch · ${movies.length} titoli salvati`, 40, 92);
+  ctx.fillText(`CineMatch · ${movies.length} titles saved`, 40, 92);
 
   const images = await Promise.all(shown.map((m) => loadImage(m.poster_path)));
 
@@ -112,11 +112,11 @@ export async function exportAsImage(movies, { limit = 12 } = {}) {
     ctx.font = 'bold 24px Inter, sans-serif';
     ctx.fillText(movie.title.length > 38 ? `${movie.title.slice(0, 38)}…` : movie.title, textX, y + 42);
 
-    const type = movie.mediaType === 'tv' ? 'Serie TV' : 'Film';
+    const type = movie.mediaType === 'tv' ? 'TV Show' : 'Movie';
     const year = movie.release_date?.substring(0, 4) || 'N/A';
     ctx.fillStyle = '#94a3b8';
     ctx.font = '600 16px Inter, sans-serif';
-    ctx.fillText(`${type} · ${year}${movie.watched ? ' · Guardato ✅' : ''}`, textX, y + 68);
+    ctx.fillText(`${type} · ${year}${movie.watched ? ' · Watched ✅' : ''}`, textX, y + 68);
 
     ctx.fillStyle = '#facc15';
     ctx.font = 'bold 18px Inter, sans-serif';
@@ -132,7 +132,7 @@ export async function exportAsImage(movies, { limit = 12 } = {}) {
   if (extra > 0) {
     ctx.fillStyle = '#64748b';
     ctx.font = '600 16px Inter, sans-serif';
-    ctx.fillText(`+ altri ${extra} titoli non mostrati`, 40, height - 24);
+    ctx.fillText(`+ ${extra} more titles not shown`, 40, height - 24);
   }
 
   return new Promise((resolve) => {

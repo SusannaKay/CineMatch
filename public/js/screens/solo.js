@@ -28,8 +28,8 @@ export function renderSolo(moviesList, onNavigate) {
       <div class="text-center pb-8 pt-2 px-6 flex-shrink-0">
         <div class="flex justify-between items-center bg-[#1e293b] border border-indigo-500/40 rounded-2xl w-full max-w-[300px] mx-auto px-2 py-1">
           <button id="solo-nope" class="flex flex-col items-center py-2 w-1/3 text-slate-400"><i class="fa-solid fa-xmark text-lg mb-1"></i><span class="text-xs">Nope</span></button>
-          <button id="solo-details" class="flex flex-col items-center py-2 w-1/3 text-rose-500 border-x border-slate-700"><i class="fa-solid fa-info text-lg mb-1"></i><span class="text-xs">Dettagli</span></button>
-          <button id="solo-like" class="flex flex-col items-center py-2 w-1/3 text-emerald-500"><i class="fa-solid fa-heart text-lg mb-1"></i><span class="text-xs">Mi piace</span></button>
+          <button id="solo-details" class="flex flex-col items-center py-2 w-1/3 text-rose-500 border-x border-slate-700"><i class="fa-solid fa-info text-lg mb-1"></i><span class="text-xs">Details</span></button>
+          <button id="solo-like" class="flex flex-col items-center py-2 w-1/3 text-emerald-500"><i class="fa-solid fa-heart text-lg mb-1"></i><span class="text-xs">Like</span></button>
         </div>
       </div>
       <nav id="mode-nav" class="mode-nav flex-shrink-0 h-16 border-t border-slate-800 bg-slate-900/95"></nav>
@@ -48,17 +48,17 @@ function renderCard(screen, onNavigate) {
   const container = screen.querySelector('#solo-card-container');
   if (!container) return;
   const movie = movies[index];
-  screen.querySelector('#solo-progress').textContent = movies.length ? `${index + 1} / ${movies.length}` : '0 titoli';
+  screen.querySelector('#solo-progress').textContent = movies.length ? `${index + 1} / ${movies.length}` : '0 titles';
   screen.querySelector('#solo-watchlist span').textContent = watchlistCount();
   container.innerHTML = '';
   if (!movie) {
     container.innerHTML = loadingNextBatch
-      ? '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">Nessun like in questa selezione.<br>Carico altri titoli...</div>'
-      : '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">Non ci sono altri titoli.<br>Prova una nuova ricerca.</div>';
+      ? '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">No likes in this batch.<br>Loading more titles...</div>'
+      : '<div class="flex items-center justify-center h-full p-8 text-center text-slate-400">No more titles.<br>Try a new search.</div>';
     return;
   }
   const card = document.createElement('div'); card.className = 'movie-card shadow-2xl'; card.style.backgroundImage = `url('${movie.poster_path}')`;
-  card.innerHTML = `<div class="badge badge-like">SÌ</div><div class="badge badge-nope">NO</div><button class="btn-ignore absolute top-3 right-3 z-[110] w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-rose-400 active:scale-90 transition-all" title="Non mostrare più questo titolo"><i class="fa-solid fa-eye-slash"></i></button><div class="card-overlay"><h2 class="text-3xl font-extrabold leading-tight">${escapeHTML(movie.title)}</h2><div class="flex items-center text-sm font-semibold gap-3 text-slate-300 mt-2"><span>📅 ${movie.release_date?.substring(0,4)||'N/A'}</span><span>⭐ ${movie.vote_average}</span></div></div>`;
+  card.innerHTML = `<div class="badge badge-like">YES</div><div class="badge badge-nope">NO</div><button class="btn-ignore absolute top-3 right-3 z-[110] w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-rose-400 active:scale-90 transition-all" title="Don't show this title again"><i class="fa-solid fa-eye-slash"></i></button><div class="card-overlay"><h2 class="text-3xl font-extrabold leading-tight">${escapeHTML(movie.title)}</h2><div class="flex items-center text-sm font-semibold gap-3 text-slate-300 mt-2"><span>📅 ${movie.release_date?.substring(0,4)||'N/A'}</span><span>⭐ ${movie.vote_average}</span></div></div>`;
   container.appendChild(card);
   setupSwipe(card, movie, screen, onNavigate);
   wireIgnoreButton(card, movie, screen, onNavigate);
@@ -70,7 +70,7 @@ function wireIgnoreButton(card, movie, screen, onNavigate) {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     addToIgnored(movie.id);
-    showToast(`"${movie.title}" non ti verrà più proposto`);
+    showToast(`"${movie.title}" won't be shown again`);
     vote(false, onNavigate);
   });
 }
@@ -84,7 +84,7 @@ async function loadNextBatch(onNavigate) {
     const r = await fetch('/api/discover', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...appState.filtersDraft, page: currentPage })
+      body: JSON.stringify({ ...appState.filtersDraft, region: appState.region, page: currentPage })
     });
     if (!r.ok) throw new Error();
     const nextMovies = (await r.json()).filter((m) => !isIgnored(m.id));
@@ -93,7 +93,7 @@ async function loadNextBatch(onNavigate) {
     index = 0;
     likesInBatch = 0;
   } catch (err) {
-    showToast(err.message === 'empty' ? 'Non ci sono altri titoli con questi filtri.' : 'Errore nel caricamento di altri titoli.');
+    showToast(err.message === 'empty' ? 'No more titles match these filters.' : 'Error loading more titles.');
     onNavigate('filters');
   } finally {
     loadingNextBatch = false;
@@ -107,7 +107,7 @@ function vote(like, onNavigate) {
   if (like) {
     likesInBatch++;
     addToWatchlist(movie);
-    showToast('Salvato nella Watchlist');
+    showToast('Saved to Watchlist');
   }
   index++;
   if (index >= movies.length) {
@@ -115,7 +115,7 @@ function vote(like, onNavigate) {
       loadNextBatch(onNavigate);
       return;
     }
-    showToast('Hai finito questa selezione');
+    showToast('You finished this batch');
     onNavigate('watchlist');
     return;
   }

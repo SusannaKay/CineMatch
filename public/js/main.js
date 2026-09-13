@@ -9,10 +9,12 @@ import { renderSolo } from './screens/solo.js';
 import { renderSuggestion } from './screens/suggestion.js';
 import { renderWatchlist } from './screens/watchlist.js';
 import { renderOnboarding } from './screens/onboarding.js';
+import { renderSettings } from './screens/settings.js';
 import './screens/details.js';
 
 const ONBOARDING_SEEN_KEY = 'cinematch_onboarding_seen';
 let currentScreen = 'welcome';
+let settingsReturnScreen = 'welcome';
 
 function navigate(screen) {
   if (screen === 'multiplayer') {
@@ -52,6 +54,7 @@ function render() {
   if (currentScreen === 'solo') return renderSolo(appState.soloMovies, navigate);
   if (currentScreen === 'suggestion') return renderSuggestion(navigate);
   if (currentScreen === 'watchlist') return renderWatchlist(navigate);
+  if (currentScreen === 'settings') return renderSettings(() => navigate(settingsReturnScreen));
 
   if (!room) {
     currentScreen = 'welcome';
@@ -107,9 +110,18 @@ function registerServiceWorker() {
   });
 }
 
+function setupSettingsButton() {
+  document.getElementById('btn-settings')?.addEventListener('click', () => {
+    settingsReturnScreen = currentScreen;
+    currentScreen = 'settings';
+    render();
+  });
+}
+
 async function init() {
   registerServiceWorker();
   setupInstallPrompt();
+  setupSettingsButton();
   await fetchConfig();
   getSocket();
   onRoomState((room) => {

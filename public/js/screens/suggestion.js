@@ -1,4 +1,5 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
+import { appState } from '../state.js';
 import { addToWatchlist, hasInWatchlist } from '../watchlist.js';
 import { openDetails } from './details.js';
 import { showToast } from '../socket.js';
@@ -7,11 +8,11 @@ export function renderSuggestion(onNavigate) {
   const screen = mountScreen('screen-suggestion', `
     <div class="flex-grow flex flex-col overflow-hidden">
       <div class="p-6 pb-3 flex-shrink-0">
-        <h2 class="text-2xl font-extrabold text-center">Trova titoli simili</h2>
-        <p class="text-slate-400 text-sm text-center mt-2">Parti da un film o una serie che ami.</p>
+        <h2 class="text-2xl font-extrabold text-center">Find similar titles</h2>
+        <p class="text-slate-400 text-sm text-center mt-2">Start from a movie or show you love.</p>
         <div class="relative mt-5">
           <i class="fa-solid fa-search absolute left-4 top-4 text-slate-500"></i>
-          <input id="seed-input" type="text" placeholder="Es. Inception, Breaking Bad..." autocomplete="off"
+          <input id="seed-input" type="text" placeholder="e.g. Inception, Breaking Bad..." autocomplete="off"
             class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-primary">
         </div>
       </div>
@@ -34,33 +35,33 @@ export function renderSuggestion(onNavigate) {
     results.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-xl"></i></div>';
     timer = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const response = await fetch(`/api/search?q=${encodeURIComponent(q)}&region=${appState.region}`);
         if (!response.ok) throw new Error();
         renderSeeds(results, await response.json(), onSelectSeed);
-      } catch { results.innerHTML = '<p class="text-center text-rose-400 py-8">Errore durante la ricerca.</p>'; }
+      } catch { results.innerHTML = '<p class="text-center text-rose-400 py-8">Search error.</p>'; }
     }, 500);
   });
 
   async function onSelectSeed(seed) {
-    results.innerHTML = '<div class="text-center py-12 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><p class="mt-3">Cerco titoli simili…</p></div>';
+    results.innerHTML = '<div class="text-center py-12 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i><p class="mt-3">Finding similar titles…</p></div>';
     try {
-      const response = await fetch(`/api/recommendations?id=${seed.id}&mediaType=${seed.mediaType}`);
+      const response = await fetch(`/api/recommendations?id=${seed.id}&mediaType=${seed.mediaType}&region=${appState.region}`);
       if (!response.ok) throw new Error();
       const recommendations = await response.json();
       renderRecommendations(results, seed.title, recommendations);
-    } catch { results.innerHTML = '<p class="text-center text-rose-400 py-8">Impossibile caricare le raccomandazioni.</p>'; }
+    } catch { results.innerHTML = '<p class="text-center text-rose-400 py-8">Could not load recommendations.</p>'; }
   }
 
   function renderRecommendations(container, seedTitle, movies) {
-    if (!movies.length) { container.innerHTML = `<p class="text-center text-slate-500 py-8">Nessun titolo simile trovato per ${escapeHTML(seedTitle)}.</p>`; return; }
-    container.innerHTML = `<div class="mb-4"><button id="back-seeds" class="text-sm text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-left mr-2"></i>Nuova ricerca</button><h3 class="text-xl font-extrabold mt-3">Simili a ${escapeHTML(seedTitle)}</h3></div>`;
+    if (!movies.length) { container.innerHTML = `<p class="text-center text-slate-500 py-8">No similar titles found for ${escapeHTML(seedTitle)}.</p>`; return; }
+    container.innerHTML = `<div class="mb-4"><button id="back-seeds" class="text-sm text-slate-400 hover:text-white"><i class="fa-solid fa-arrow-left mr-2"></i>New search</button><h3 class="text-xl font-extrabold mt-3">Similar to ${escapeHTML(seedTitle)}</h3></div>`;
     const grid = document.createElement('div'); grid.className = 'grid grid-cols-2 gap-3'; container.appendChild(grid);
     movies.forEach((movie) => {
       const card = document.createElement('article'); card.className = 'match-card relative';
       card.innerHTML = `<button class="w-full text-left"><img src="${movie.poster_path}" alt="${escapeHTML(movie.title)}" class="w-full aspect-[2/3] object-cover"><div class="p-3"><h4 class="font-bold text-sm truncate">${escapeHTML(movie.title)}</h4><p class="text-xs text-slate-500 mt-1">${movie.release_date?.substring(0,4) || 'N/A'} · ⭐ ${movie.vote_average}</p></div></button><button class="save-btn absolute top-2 right-2 w-9 h-9 rounded-full bg-slate-900/90 border border-slate-700">${hasInWatchlist(movie.id) ? '♥' : '♡'}</button>`;
       card.querySelector('article > button');
       card.querySelector('.w-full').onclick = () => openDetails(movie);
-      card.querySelector('.save-btn').onclick = (e) => { e.stopPropagation(); if (addToWatchlist(movie)) { e.currentTarget.textContent = '♥'; showToast('Salvato nella Watchlist'); } else showToast('Già nella Watchlist'); };
+      card.querySelector('.save-btn').onclick = (e) => { e.stopPropagation(); if (addToWatchlist(movie)) { e.currentTarget.textContent = '♥'; showToast('Saved to Watchlist'); } else showToast('Already in Watchlist'); };
       grid.appendChild(card);
     });
     container.querySelector('#back-seeds').onclick = () => { input.value = ''; container.innerHTML = ''; input.focus(); };
@@ -68,11 +69,11 @@ export function renderSuggestion(onNavigate) {
 }
 
 function renderSeeds(container, seeds, onSelect) {
-  if (!seeds.length) { container.innerHTML = '<p class="text-center text-slate-500 py-8">Nessun risultato trovato.</p>'; return; }
+  if (!seeds.length) { container.innerHTML = '<p class="text-center text-slate-500 py-8">No results found.</p>'; return; }
   container.innerHTML = '';
   seeds.forEach((seed) => {
     const button = document.createElement('button'); button.className = 'w-full flex items-center gap-4 p-3 mb-2 rounded-xl border border-slate-800 hover:bg-slate-800 text-left';
-    button.innerHTML = `${seed.poster_path ? `<img src="${seed.poster_path}" class="w-12 h-16 object-cover rounded">` : '<div class="w-12 h-16 rounded bg-slate-700"></div>'}<div class="min-w-0"><h4 class="font-bold truncate">${escapeHTML(seed.title)}</h4><p class="text-xs text-slate-400">${seed.mediaType === 'movie' ? 'Film' : 'Serie TV'} · ${seed.year || 'N/A'}</p></div>`;
+    button.innerHTML = `${seed.poster_path ? `<img src="${seed.poster_path}" class="w-12 h-16 object-cover rounded">` : '<div class="w-12 h-16 rounded bg-slate-700"></div>'}<div class="min-w-0"><h4 class="font-bold truncate">${escapeHTML(seed.title)}</h4><p class="text-xs text-slate-400">${seed.mediaType === 'movie' ? 'Movie' : 'TV Show'} · ${seed.year || 'N/A'}</p></div>`;
     button.onclick = () => onSelect(seed); container.appendChild(button);
   });
 }

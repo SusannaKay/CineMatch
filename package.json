@@ -1,7 +1,7 @@
 {
   "name": "cinematch",
   "version": "1.0.0",
-  "description": "Trova il film perfetto — da solo o in gruppo",
+  "description": "Find the perfect movie — solo or with friends",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
