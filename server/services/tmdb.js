@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { mockMovies } from '../data/mockMovies.js';
+import { genreNamesFromIds } from '../data/genres.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
@@ -60,6 +61,7 @@ async function enrichMovie(m, endpoint) {
   return {
     id: m.id,
     mediaType: endpoint === 'tv' ? 'tv' : 'movie',
+    genres: genreNamesFromIds(m.genre_ids),
     title: m.title || m.name,
     overview: m.overview || 'Trama non disponibile.',
     poster_path: m.poster_path

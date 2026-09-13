@@ -1,6 +1,8 @@
 export const mockMovies = [
   {
     id: 1,
+    mediaType: 'movie',
+    genres: ['Fantascienza', 'Azione', 'Thriller'],
     title: 'Inception',
     overview: "Un ladro abile nell'estrarre segreti dalle menti durante i sogni accetta una missione impossibile.",
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/edv5CZvWj09upOsy2Y6IwObsVNl.jpg',
@@ -12,6 +14,8 @@ export const mockMovies = [
   },
   {
     id: 2,
+    mediaType: 'movie',
+    genres: ['Azione', 'Avventura'],
     title: 'Mad Max: Fury Road',
     overview: 'In un futuro post-apocalittico, Max fa squadra con Furiosa per sfuggire a un leader tirannico.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/8tZYtuWezp8JbcsvHYO0O46tFbo.jpg',
@@ -23,6 +27,8 @@ export const mockMovies = [
   },
   {
     id: 3,
+    mediaType: 'movie',
+    genres: ['Drammatico', 'Thriller'],
     title: 'Parasite',
     overview: 'Una famiglia povera si infiltra nella vita di una famiglia ricca, ma un segreto minaccia tutto.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
@@ -34,6 +40,8 @@ export const mockMovies = [
   },
   {
     id: 4,
+    mediaType: 'movie',
+    genres: ['Animazione', 'Azione', 'Avventura'],
     title: 'Spider-Man: Across the Spider-Verse',
     overview: 'Miles Morales viene catapultato nel Multiverso degli Spider-People.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
@@ -45,6 +53,8 @@ export const mockMovies = [
   },
   {
     id: 5,
+    mediaType: 'movie',
+    genres: ['Crime', 'Drammatico'],
     title: 'Pulp Fiction',
     overview: 'Quattro storie di violenza e redenzione intrecciate a Los Angeles.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/d5iIlFn5s0ImszYzBPb8SPCPb1s.jpg',
@@ -56,6 +66,8 @@ export const mockMovies = [
   },
   {
     id: 6,
+    mediaType: 'movie',
+    genres: ['Romantico', 'Musica', 'Drammatico'],
     title: 'La La Land',
     overview: 'Un pianista jazz e un\'aspirante attrice si innamorano a Los Angeles.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg',
@@ -67,6 +79,8 @@ export const mockMovies = [
   },
   {
     id: 7,
+    mediaType: 'movie',
+    genres: ['Fantascienza', 'Drammatico', 'Avventura'],
     title: 'Interstellar',
     overview: 'Un gruppo di astronauti viaggia attraverso un wormhole alla ricerca di una nuova casa.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/gEU2QboWDDTkq1M1R2z0Scw9Vb.jpg',
@@ -78,6 +92,8 @@ export const mockMovies = [
   },
   {
     id: 8,
+    mediaType: 'movie',
+    genres: ['Fantascienza', 'Commedia', 'Avventura'],
     title: 'Everything Everywhere All at Once',
     overview: 'Una lavatrice scopre che deve connettersi a versioni alternative di se stessa.',
     poster_path: 'https://image.tmdb.org/t/p/w600_and_h900_bestv2/w3LxiVYdWWRvEVdn5RYQ6jIqkb1.jpg',

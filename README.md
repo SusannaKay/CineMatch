@@ -15,10 +15,18 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 - ✨ **Suggestion mode** — search for a movie or TV show you love and get a list of similar titles, without entering swipe mode.
 - 🔖 **Watchlist** — keep, inspect, sort, and remove titles you've saved across sessions.
 - 🔀 **Watchlist sorting** — order saved titles by the order you added them or by rating (ascending/descending).
-- 🔍 **Watchlist search & filters** — search saved titles by name and filter by content type (movies vs. TV shows), with a live count and average rating.
+- 🔍 **Watchlist search & filters** — search saved titles by name and filter by content type (movies vs. TV shows), watched status, or custom tags, with a live count and average rating.
+- 🏷️ **Watchlist tags** — organize saved titles with your own free-form tags (e.g. "coppia", "leggero").
+- ✅ **Mark as watched** — track which saved titles you've already watched instead of just deleting them.
+- 📤 **Export the Watchlist** — copy it as Markdown text, or download it as JSON (backup/reuse) or as a shareable PNG image card.
 - 🎲 **Surprise me** — still can't decide? Pick a random title from your (filtered) Watchlist and jump straight to its details.
 - 📲 **Installable app (PWA)** — CineMatch can be installed on your phone or desktop home screen and keeps working offline for the app shell once you've visited it.
 - 👥 **Multiplayer mode** — create a room and invite friends with a room code, a shareable link, or a QR code.
+- 📌 **Persistent rooms** — optionally make a room "fixed" for your regular group: the same code keeps working across movie nights and the room stays alive much longer than the default.
+- 🔌 **Resilient to disconnects** — a dropped connection doesn't stall or end the session: the game keeps moving among whoever's still connected, and a reconnecting player (Wi‑Fi blip, backgrounded tab) is seamlessly restored to their seat instead of being treated as a new player.
+- 👑 **Automatic host handover** — if the host disconnects, another connected player is instantly promoted so the room is never stuck waiting on someone who's gone.
+- 🪄 **"Decidi tu" fallback** — if the group repeatedly fails to reach a majority after several batches, CineMatch picks the best-liked title so far instead of swiping forever.
+- 📊 **Group stats** — each room tracks sessions played, titles seen, matches found, favorite genres, and who's liked the most titles, shown in the lobby and results screen.
 - 🎯 **Group matching** — once everyone has voted on a title, CineMatch keeps the ones that reached a **majority** of likes (strictly more than half of the players), ranked by number of likes and consensus %.
 - 🧩 **Filters** — narrow discovery by content type, genre (include or exclude), language, era, runtime, and streaming platform.
 - 🔎 **TMDB search** — search for movies and TV shows as the starting point for recommendations.
@@ -64,12 +72,35 @@ Suggestion mode is intentionally separate from Solo discovery: **recommendations
 6. When all players have voted, CineMatch moves to the next title.
 7. If the whole batch is swiped without any title reaching a majority, CineMatch automatically fetches the next batch of titles.
 8. At the end, the group sees every title that got a **majority of likes** (strictly more than half the players), ranked by number of likes and consensus percentage — with the top match highlighted.
+9. If the group still can't agree after several batches in a row, CineMatch's **"Decidi tu"** fallback steps in and picks the best-liked title found so far, so the night doesn't end in an endless swipe loop.
 
-Rooms support up to **8 players** and automatically expire after a period of inactivity.
+Rooms support up to **8 players** and automatically expire after a period of inactivity — unless created as a **persistent room** (see below), which stays alive much longer and can go dormant and be reused later under the same code.
+
+If a player's connection drops mid-session (Wi‑Fi hiccup, phone lock, backgrounded tab), the room doesn't wait for them: voting continues among everyone still connected, and if the dropped player reconnects within about 30 seconds they're restored to their exact seat — same votes, same color, no duplicate entry. If the disconnected player was the host, another connected player is instantly promoted so the room is never stuck.
+
+#### Persistent rooms
+
+When creating a room, the host can check **"Stanza fissa per il gruppo"**. A persistent room:
+
+- Keeps its 4-letter code reusable across separate movie nights — no need to create a new room each time.
+- Stays alive in memory far longer than a regular room (weeks of inactivity vs. 2 hours), though it does **not** survive a server restart.
+- Goes dormant (back to an empty lobby) instead of being deleted once everyone leaves; whoever rejoins first with the same code becomes the new host.
+- Accumulates **group stats** (see below) across every session played in that room, for as long as the server keeps running.
+
+#### Group stats
+
+Every room tracks how many sessions it has hosted, how many titles were swiped, how many majority matches were found, the group's favorite genres, and who's liked the most titles. These stats are shown as a small teaser in the lobby and in full on the results screen after each session.
 
 ### Watchlist
 
-The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time. Use the search box and type chips (All / Movies / TV) to narrow down a long list, check the stats line for a quick count and average rating, or hit **Sorpresa** to have CineMatch pick a random title from your current filter for you.
+The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time.
+
+- **Search & filter** — use the search box, the type chips (Tutti / Film / Serie TV), and the "Da vedere / Guardati" status chips to narrow down a long list.
+- **Tags** — add free-form tags to any saved title (e.g. "coppia", "da vedere insieme") via the "+ tag" button; click the tag chips above the list to filter by one.
+- **Mark as watched** — toggle a title as watched instead of removing it, so you keep a record of what you've already seen.
+- **Export** — the "Esporta" menu lets you copy the whole Watchlist as Markdown text (handy to paste in a chat), download it as JSON (for backup or reuse), or download a shareable PNG image card.
+- **Sorpresa** — still can't decide? Hit **Sorpresa** to have CineMatch pick a random title from your current filter for you.
+- The stats line always shows a quick count and average rating for whatever's currently in view.
 
 ### Installing CineMatch (PWA)
 
@@ -247,8 +278,10 @@ The main server configuration includes:
 
 - **Port:** `3000` by default
 - **Maximum players:** `8`
-- **Room lifetime:** `2 hours` (expired rooms are cleaned up every 10 minutes)
+- **Room lifetime:** `2 hours` of inactivity for regular rooms, `30 days` for persistent rooms (expired rooms are cleaned up every 10 minutes; both are in-memory only and reset on server restart)
+- **Reconnect grace period:** `30 seconds` — a disconnected player can rejoin their exact seat within this window before being removed
 - **Vote timeout:** `45 seconds`
+- **"Decidi tu" threshold:** after `3` batches in a row with no majority match, CineMatch picks the best-liked title found so far
 - **Deck size:** `10 titles` per batch (Solo and Multiplayer automatically load another batch when needed)
 - **Mock data:** enabled automatically when no TMDB API key is available
 
@@ -280,7 +313,7 @@ Some ideas for future iterations:
 - [ ] More sophisticated recommendation algorithms
 - [ ] Additional streaming providers and regions
 - [x] Improved mobile UX / PWA support
-- [ ] Persistent multiplayer rooms
+- [x] Persistent multiplayer rooms *(in-memory; doesn't yet survive a server restart)*
 - [ ] Cross-device Watchlist sync
 - [ ] Session history
 
