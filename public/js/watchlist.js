@@ -21,7 +21,7 @@ export function hasInWatchlist(id) {
 
 export function addToWatchlist(movie) {
   if (!movie || movie.id == null || hasInWatchlist(movie.id)) return false;
-  movies.push(movie);
+  movies.push({ ...movie, tags: [], watched: false });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(movies));
   return true;
 }
@@ -31,6 +31,15 @@ export function removeFromWatchlist(id) {
   movies = movies.filter((movie) => String(movie.id) !== String(id));
   if (movies.length !== before) localStorage.setItem(STORAGE_KEY, JSON.stringify(movies));
   return movies.length !== before;
+}
+
+/** Merges a partial update (tags, watched, ...) into a saved title. */
+export function updateWatchlistItem(id, patch) {
+  const movie = movies.find((m) => String(m.id) === String(id));
+  if (!movie) return false;
+  Object.assign(movie, patch);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(movies));
+  return true;
 }
 
 export function watchlistCount() {

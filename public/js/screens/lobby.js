@@ -5,9 +5,9 @@ import { renderFilters } from './filters.js';
 
 function playerChips(players, hostId) {
   return players.map((p) => `
-    <span class="player-chip">
+    <span class="player-chip ${p.connected === false ? 'opacity-50' : ''}">
       <span class="player-dot" style="background:${p.color}"></span>
-      ${p.name}${p.id === hostId ? ' <span class="text-slate-500 text-xs">(host)</span>' : ''}
+      ${p.name}${p.id === hostId ? ' <span class="text-slate-500 text-xs">(host)</span>' : ''}${p.connected === false ? ' <span class="text-amber-400 text-xs">(riconnessione…)</span>' : ''}
     </span>
   `).join('');
 }
@@ -22,7 +22,15 @@ export function renderLobby(room, onNavigate) {
         <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Codice stanza</p>
         <div class="room-code">${room.id}</div>
         <p class="text-slate-400 text-sm mt-3">Condividi questo codice con gli amici sulla stessa rete Wi‑Fi.</p>
+        ${room.persistent ? '<p class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-full px-3 py-1 mt-3"><i class="fa-solid fa-thumbtack"></i>Stanza fissa: riusa questo codice quando volete</p>' : ''}
       </div>
+
+      ${room.stats?.sessions > 0 ? `
+        <div class="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 mb-6 text-sm text-slate-300">
+          <i class="fa-solid fa-chart-simple text-primary mr-2"></i>Questo gruppo ha già passato <span class="font-bold text-white">${room.stats.sessions}</span> serat${room.stats.sessions === 1 ? 'a' : 'e'} insieme
+          ${room.stats.topGenres?.[0] ? ` e ama soprattutto <span class="font-bold text-white">${room.stats.topGenres[0].name}</span>` : ''}.
+        </div>
+      ` : ''}
 
       ${isHost ? `
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 mb-6 flex flex-col items-center">

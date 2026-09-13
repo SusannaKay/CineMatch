@@ -70,7 +70,38 @@ function render() {
   }
 }
 
+function setupInstallPrompt() {
+  const btn = document.getElementById('btn-install');
+  if (!btn) return;
+  let deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    btn.classList.remove('hidden');
+  });
+
+  btn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    btn.classList.add('hidden');
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
+
+  window.addEventListener('appinstalled', () => btn.classList.add('hidden'));
+}
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 async function init() {
+  registerServiceWorker();
+  setupInstallPrompt();
   await fetchConfig();
   getSocket();
   onRoomState((room) => {
