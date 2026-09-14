@@ -416,7 +416,7 @@ This project is not affiliated with or endorsed by TMDB or OMDB.
 
 ## 📄 License
 
-No license has been specified for this repository yet.
+Released under the [MIT License](LICENSE).
 
 ---
 
