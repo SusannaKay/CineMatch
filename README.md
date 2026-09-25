@@ -13,6 +13,7 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 - [Architecture](#️-architecture)
 - [Tech Stack](#️-tech-stack)
 - [Getting Started](#-getting-started)
+- [Running with Docker](#-running-with-docker)
 - [Configuration](#️-configuration)
 - [API Usage Limits](#-api-usage-limits)
 - [HTTP API](#-http-api)
@@ -64,6 +65,7 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 ### 🎬 Title details & data
 
 - **TMDB search** as the starting point for recommendations.
+- **Genres, runtime & credits**: each title shows its genres, runtime (per-episode for TV), director (creator for TV shows), and top-billed cast.
 - **Aggregated ratings**: TMDB rating always shown; IMDb, Rotten Tomatoes, and Metacritic scores are added automatically when an `OMDB_API_KEY` is configured.
 - **Streaming information**: streaming providers for your selected region, when available.
 - **Trailers**: available trailers can be opened from a title's details.
@@ -90,7 +92,7 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 2. Configure your filters.
 3. Swipe through the generated deck.
 4. Swipe right or press **Like** to save a title automatically to your Watchlist.
-5. Swipe up, or press **Details**, to see the overview, ratings, streaming providers, and trailer for a title.
+5. Swipe up, or press **Details**, to see the overview, genres, runtime, director/cast, ratings, streaming providers, and trailer for a title.
 6. Tap the eye-slash icon on a card to permanently hide that title from future decks.
 7. If you reach the end of a batch without liking anything, CineMatch automatically loads the next batch of titles with the same filters.
 8. Open the Watchlist whenever you want to review, sort, search, or remove your saved titles.
@@ -117,7 +119,7 @@ Suggestion mode is intentionally separate from Solo discovery: **recommendations
 8. At the end, the group sees every title that got a **majority of likes** (strictly more than half the players), ranked by number of likes and consensus percentage — with the top match highlighted.
 9. If the group still can't agree after several batches in a row, CineMatch's auto-pick fallback steps in and picks the best-liked title found so far, so the night doesn't end in an endless swipe loop.
 
-Rooms support up to **8 players** and automatically expire after a period of inactivity — unless created as a **persistent room** (see below), which stays alive much longer and can go dormant and be reused later under the same code.
+A session needs at least **2 players** to start. Rooms support up to **8 players** and automatically expire after a period of inactivity — unless created as a **persistent room** (see below), which stays alive much longer and can go dormant and be reused later under the same code.
 
 If a player's connection drops mid-session (Wi‑Fi hiccup, phone lock, backgrounded tab), the room doesn't wait for them: voting continues among everyone still connected, and if the dropped player reconnects within the reconnect grace period (see [Configuration](#️-configuration)) they're restored to their exact seat — same votes, same color, no duplicate entry. If the disconnected player was the host, another connected player is instantly promoted so the room is never stuck.
 
@@ -222,6 +224,7 @@ CineMatch uses a lightweight Node.js backend that serves the frontend, proxies T
 | **Express** | HTTP server and static file serving |
 | **Socket.IO** | Real-time multiplayer communication |
 | **dotenv** | Environment variable management |
+| **Docker / Docker Compose** *(optional)* | Containerized self-hosting |
 
 **Frontend**
 
@@ -266,23 +269,29 @@ npm install
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the project root (see [`.env.example`](.env.example)):
+Copy the example file and fill in your keys:
+
+```bash
+cp .env.example .env
+```
 
 ```env
-PORT=3000
 TMDB_API_KEY=your_tmdb_api_key
 OMDB_API_KEY=your_omdb_api_key
 USE_MOCK_DATA=false
+PORT=3000
+HOST_PORT=8086
 ```
 
-If `TMDB_API_KEY` is missing, CineMatch automatically falls back to mock data — remember to also set `USE_MOCK_DATA=false` once you add a real key, otherwise mock data stays on. `OMDB_API_KEY` is optional: without it, titles simply show the TMDB rating without IMDb/Rotten Tomatoes/Metacritic badges.
+If `TMDB_API_KEY` is empty, CineMatch automatically falls back to mock data, so the defaults work out of the box. Once you add a real key, live TMDB data is used — unless `USE_MOCK_DATA=true`, which forces mock data regardless. `OMDB_API_KEY` is optional: without it, titles simply show the TMDB rating without IMDb/Rotten Tomatoes/Metacritic badges.
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `PORT` | No | Port used by the server. Defaults to `3000`. |
-| `TMDB_API_KEY` | No* | API key used to fetch live movie and TV data. |
-| `OMDB_API_KEY` | No | API key used to add IMDb, Rotten Tomatoes, and Metacritic ratings. Ratings are silently skipped if omitted. |
-| `USE_MOCK_DATA` | No | Set to `true` to explicitly use local mock data. |
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `TMDB_API_KEY` | No* | — | API key used to fetch live movie and TV data ([get one](https://www.themoviedb.org/settings/api)). |
+| `OMDB_API_KEY` | No | — | API key used to add IMDb, Rotten Tomatoes, and Metacritic ratings ([get one](https://www.omdbapi.com/apikey.aspx)). Ratings are silently skipped if omitted. |
+| `USE_MOCK_DATA` | No | `false` | Set to `true` to force local mock data even when a TMDB key is set. |
+| `PORT` | No | `3000` | Port the Node server listens on when run directly. Ignored in Docker (the container always listens on `3000`). |
+| `HOST_PORT` | No | `8086` | Docker only: host port mapped to the container's port `3000`. |
 
 \* If no TMDB API key is provided, CineMatch automatically uses mock data.
 
@@ -314,12 +323,36 @@ Network: http://192.168.1.42:3000
 
 Open that address from your phone or another device connected to the same Wi-Fi network.
 
+## 🐳 Running with Docker
+
+CineMatch ships a `Dockerfile` (Node 24 Alpine, production dependencies only, runs as the unprivileged `node` user) and a `docker-compose.yml`, handy for hosting it on a home server.
+
+```bash
+cp .env.example .env      # then add your API keys
+docker compose up -d --build
+```
+
+The app is then available at `http://<host>:8086` (change the host port with `HOST_PORT` in `.env`). The compose file reads all variables from `.env`, restarts the container automatically (`unless-stopped`), and a built-in healthcheck polls `/api/config` every 30 seconds — `docker compose ps` shows the health status.
+
+Useful commands:
+
+```bash
+docker compose logs -f          # follow logs
+docker compose up -d --force-recreate   # apply .env changes
+git pull && docker compose up -d --build  # update to the latest version
+docker compose down             # stop and remove the container
+```
+
+> **PWA install over the network:** browsers only allow installing the app (and registering the service worker) on `localhost` or over **HTTPS**. When self-hosting, put CineMatch behind an HTTPS reverse proxy — for a private setup, `tailscale serve --bg --https=<port> http://127.0.0.1:8086` works well.
+
+> Rooms live in memory only, so restarting or updating the container clears every room, persistent ones included.
+
 ## ⚙️ Configuration
 
 The main server configuration includes:
 
 - **Port:** `3000` by default
-- **Maximum players:** `8`
+- **Players per room:** at least `2` to start, up to `8`
 - **Room lifetime:** `2 hours` of inactivity for regular rooms, `30 days` for persistent rooms (expired rooms are cleaned up every 10 minutes; both are in-memory only and reset on server restart)
 - **Reconnect grace period:** `30 seconds` — a disconnected player can rejoin their exact seat within this window before being removed
 - **Vote timeout:** `45 seconds`
