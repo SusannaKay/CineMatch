@@ -1,0 +1,12 @@
+services:
+  cinematch:
+    build: .
+    image: cinematch:local
+    container_name: cinematch
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Porta interna fissa: la porta sull'host si cambia con HOST_PORT nel .env
+      PORT: "3000"
+    ports:
+      - "${HOST_PORT:-8086}:3000"
