@@ -42,6 +42,7 @@ export function renderSolo(moviesList, onNavigate) {
   screen.querySelector('#solo-like').onclick = () => vote(true, onNavigate);
   screen.querySelector('#solo-details').onclick = () => { if (movies[index]) openDetails(movies[index]); };
   renderCard(screen, onNavigate);
+  if (!movies.length && (moviesList || []).length) loadNextBatch(onNavigate);
 }
 
 function renderCard(screen, onNavigate) {
@@ -132,5 +133,5 @@ function setupSwipe(card, movie, screen, onNavigate) {
   handlers=()=>{card.removeEventListener('touchstart',start);card.removeEventListener('touchmove',move);card.removeEventListener('touchend',end);};
 }
 
-function renderNav(screen,onNavigate,active){const nav=screen.querySelector('#mode-nav');const items=[['solo','Solo','fa-user'],['suggestion','Suggestion','fa-wand-magic-sparkles'],['multiplayer','Multiplayer','fa-users'],['watchlist','Watchlist','fa-bookmark']];nav.innerHTML=items.map(([id,l,i])=>`<button data-mode="${id}" class="flex-1 flex flex-col items-center justify-center gap-1 ${active===id?'text-primary':'text-slate-500'}"><i class="fa-solid ${i}"></i><span class="text-[10px] font-bold">${l}</span></button>`).join('');nav.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>onNavigate(b.dataset.mode==='solo'?'filters':b.dataset.mode));}
+function renderNav(screen,onNavigate,active){const nav=screen.querySelector('#mode-nav');const items=[['solo','Solo','fa-user'],['suggestion','Suggestion','fa-wand-magic-sparkles'],['multiplayer','Multiplayer','fa-users'],['watchlist','Watchlist','fa-bookmark']];nav.innerHTML=items.map(([id,l,i])=>`<button data-mode="${id}" class="flex-1 flex flex-col items-center justify-center gap-1 ${active===id?'text-primary':'text-slate-500'}"><i class="fa-solid ${i}"></i><span class="text-[10px] font-bold">${l}</span></button>`).join('');nav.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>onNavigate(b.dataset.mode==='solo'?'solo-new':b.dataset.mode));}
 function escapeHTML(v=''){const d=document.createElement('div');d.textContent=v;return d.innerHTML;}

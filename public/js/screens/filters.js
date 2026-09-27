@@ -1,9 +1,10 @@
 import { mountScreen, optionIconHTML } from '../utils/dom.js';
 import { appState } from '../state.js';
-import { setFilters, showToast } from '../socket.js';
+import { setFilters, showToast, hideToast } from '../socket.js';
 import { buildQuestionnaire } from '../data/questionnaire.js';
 
 let lastRenderedStep = -1;
+let searching = false;
 
 export function renderFilters(onNavigate) {
   const { filtersDraft: answers, filterStep, showAllGenres } = appState;
@@ -113,7 +114,13 @@ async function handleAnswer(qId, value, qList, onNavigate) {
     renderFilters(onNavigate);
     return;
   }
-  if (appState.mode === 'solo') {
+  // Only a host inside a room configures multiplayer filters; everything else is a solo search.
+  const hostingRoom = appState.mode === 'multiplayer' && appState.room?.isHost;
+  if (!hostingRoom) {
+    if (searching) return;
+    searching = true;
+    appState.mode = 'solo';
+    showToast('Loading titles…', 15000);
     try {
       const r = await fetch('/api/discover', {
         method: 'POST',
@@ -121,11 +128,17 @@ async function handleAnswer(qId, value, qList, onNavigate) {
         body: JSON.stringify({ ...answers, region: appState.region })
       });
       if (!r.ok) throw new Error();
-      appState.soloMovies = await r.json();
-      if (!appState.soloMovies.length) throw new Error('empty');
+      const found = await r.json();
+      if (!Array.isArray(found) || !found.length) throw new Error('empty');
+      // The user may have left the filters while the search was running: don't yank them back.
+      if (!document.getElementById('screen-filters')) { hideToast(); return; }
+      appState.soloMovies = found;
+      hideToast();
       onNavigate('solo');
     } catch (err) {
-      showToast(err.message === 'empty' ? 'No titles found.' : 'Error loading titles.');
+      showToast(err.message === 'empty' ? 'No titles found. Try different filters.' : 'Error loading titles.');
+    } finally {
+      searching = false;
     }
     return;
   }
@@ -146,7 +159,7 @@ function renderNav(screen, onNavigate, active) {
     btn.onclick = () => {
       const mode = btn.dataset.mode;
       if (mode === active) return;
-      onNavigate(mode);
+      onNavigate(mode === 'solo' ? 'solo-new' : mode);
     };
   });
 }

@@ -84,7 +84,7 @@ function renderNav(screen, onNavigate, active) {
     ['solo', 'Solo', 'fa-user'], ['suggestion', 'Suggestion', 'fa-wand-magic-sparkles'], ['multiplayer', 'Multiplayer', 'fa-users'], ['watchlist', 'Watchlist', 'fa-bookmark']
   ];
   nav.innerHTML = items.map(([id,label,icon]) => `<button data-mode="${id}" class="flex-1 flex flex-col items-center justify-center gap-1 ${active===id?'text-primary':'text-slate-500'}"><i class="fa-solid ${icon}"></i><span class="text-[10px] font-bold">${label}</span></button>`).join('');
-  nav.querySelectorAll('[data-mode]').forEach((btn) => btn.onclick = () => onNavigate(btn.dataset.mode === 'solo' ? 'filters' : btn.dataset.mode));
+  nav.querySelectorAll('[data-mode]').forEach((btn) => btn.onclick = () => onNavigate(btn.dataset.mode === 'solo' ? 'solo-new' : btn.dataset.mode));
 }
 
 function escapeHTML(value = '') { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }

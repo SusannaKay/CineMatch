@@ -24,6 +24,11 @@ function navigate(screen) {
   } else if (screen === 'solo') {
     appState.mode = 'solo';
     currentScreen = screen;
+  } else if (screen === 'solo-new') {
+    // "Solo" from any mode menu: always a fresh solo search, whatever mode we came from.
+    appState.mode = 'solo';
+    resetFiltersDraft();
+    currentScreen = 'filters';
   } else if (screen === 'filters') {
     // Entering the filter flow must not overwrite the current mode.
     // Multiplayer hosts configure the same filters, then return to their room.

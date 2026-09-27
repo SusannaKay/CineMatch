@@ -86,6 +86,11 @@ export function showToast(message, ms = 3500) {
   showToast._t = setTimeout(() => el.classList.add('hidden'), ms);
 }
 
+export function hideToast() {
+  clearTimeout(showToast._t);
+  document.getElementById('toast').classList.add('hidden');
+}
+
 export async function fetchConfig() {
   const res = await fetch('/api/config');
   const data = await res.json();
