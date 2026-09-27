@@ -1,5 +1,5 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
-import { getWatchlist, removeFromWatchlist, updateWatchlistItem } from '../watchlist.js';
+import { getWatchlist, removeFromWatchlist, updateWatchlistItem, getSyncStatus } from '../watchlist.js';
 import { openDetails } from './details.js';
 import { showToast } from '../socket.js';
 import { exportAsMarkdown, exportAsJSON, exportAsImage } from '../utils/export.js';
@@ -10,12 +10,13 @@ let statusFilter = 'all';
 let tagFilter = null;
 let searchQuery = '';
 let addingTagFor = null;
+let renderedSignature = '';
 
 export function renderWatchlist(onNavigate) {
   const screen = mountScreen('screen-watchlist', `
     <div class="flex-grow flex flex-col overflow-hidden">
       <div class="p-6 pb-3 flex items-center justify-between gap-3">
-        <div><h2 class="text-2xl font-extrabold">Your Watchlist</h2><p class="text-sm text-slate-400 mt-1">Titles you've saved.</p></div>
+        <div><h2 class="text-2xl font-extrabold">Your Watchlist</h2><p class="text-sm text-slate-400 mt-1">Titles you've saved.<span id="sync-status" class="ml-1"></span></p></div>
         <select id="sort-select" class="bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg px-2 py-2">
           <option value="added">Date added</option>
           <option value="rating-desc">Rating ↓</option>
@@ -67,6 +68,35 @@ export function renderWatchlist(onNavigate) {
   renderStatusFilters(screen);
   renderTagFilters(screen);
   renderItems(screen);
+  renderSyncStatus(screen);
+}
+
+/**
+ * Called when the list or the sync status changes in the background (e.g. another device synced).
+ * Re-renders only if the list really changed, keeps the scroll position, and never interrupts tag editing.
+ */
+export function refreshWatchlistScreen() {
+  const screen = document.getElementById('screen-watchlist');
+  if (!screen) return;
+  renderSyncStatus(screen);
+  if (addingTagFor != null || JSON.stringify(getWatchlist()) === renderedSignature) return;
+  const content = screen.querySelector('#watchlist-content');
+  const scrollTop = content.scrollTop;
+  refresh(screen);
+  content.scrollTop = scrollTop;
+  setHeaderBadge(`${getWatchlist().length}`);
+}
+
+function renderSyncStatus(screen) {
+  const el = screen.querySelector('#sync-status');
+  if (!el) return;
+  const { enabled, state, pending } = getSyncStatus();
+  if (!enabled) { el.innerHTML = ''; return; }
+  if (state === 'offline') {
+    el.innerHTML = `<span class="text-amber-400" title="Server unreachable: changes are saved on this device and will sync automatically"><i class="fa-solid fa-cloud-arrow-up"></i> Offline${pending ? ` · ${pending} pending` : ''}</span>`;
+  } else {
+    el.innerHTML = `<span class="text-emerald-400/80" title="Synced with the CineMatch server"><i class="fa-solid ${state === 'syncing' ? 'fa-arrows-rotate fa-spin' : 'fa-cloud'}"></i> Synced</span>`;
+  }
 }
 
 function refresh(screen) {
@@ -170,6 +200,7 @@ function renderStats(screen, movies) {
 function renderItems(screen) {
   const container = screen.querySelector('#watchlist-content');
   const movies = sortMovies(filteredMovies());
+  renderedSignature = JSON.stringify(getWatchlist());
   renderStats(screen, movies);
 
   if (!getWatchlist().length) {
@@ -219,12 +250,12 @@ function renderItems(screen) {
     item.querySelector('.open-details').onclick = () => openDetails(movie);
     item.querySelector('.toggle-watched').onclick = (e) => {
       e.stopPropagation();
-      updateWatchlistItem(movie.id, { watched: !movie.watched });
+      updateWatchlistItem(movie.id, { watched: !movie.watched }, movie.mediaType);
       refresh(screen);
     };
     item.querySelector('.remove').onclick = (e) => {
       e.stopPropagation();
-      removeFromWatchlist(movie.id);
+      removeFromWatchlist(movie.id, movie.mediaType);
       showToast('Removed from Watchlist');
       refresh(screen);
       setHeaderBadge(`${getWatchlist().length}`);
@@ -232,7 +263,7 @@ function renderItems(screen) {
     item.querySelectorAll('[data-remove-tag]').forEach((btn) => {
       btn.onclick = (e) => {
         e.stopPropagation();
-        updateWatchlistItem(movie.id, { tags: tags.filter((t) => t !== btn.dataset.removeTag) });
+        updateWatchlistItem(movie.id, { tags: tags.filter((t) => t !== btn.dataset.removeTag) }, movie.mediaType);
         refresh(screen);
       };
     });
@@ -257,7 +288,7 @@ function wireTagInput(item, movie, tags, screen) {
     addingTagFor = null;
     if (value) {
       const nextTags = [...new Set([...tags, value])].slice(0, 8);
-      updateWatchlistItem(movie.id, { tags: nextTags });
+      updateWatchlistItem(movie.id, { tags: nextTags }, movie.mediaType);
     }
     refresh(screen);
   };

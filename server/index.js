@@ -7,6 +7,8 @@ import { Server } from 'socket.io';
 import { config } from './config.js';
 import { RoomManager } from './rooms/RoomManager.js';
 import { buildDeck, searchMulti, getRecommendations, tmdbConfig } from './services/tmdb.js';
+import { WatchlistStore } from './watchlist/store.js';
+import { watchlistRouter } from './watchlist/routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
@@ -14,6 +16,11 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });
 const rooms = new RoomManager();
+const watchlist = await new WatchlistStore(config.dataDir).init();
+// Tell open clients that the synced watchlist changed; only devices with sync on react (they refetch).
+watchlist.onChange((rev) => io.emit('watchlist:changed', { rev }));
+// Mounted before the global JSON parser: the sync route has its own, larger body limit.
+app.use('/api', watchlistRouter(watchlist));
 app.use(express.json());
 app.use(express.static(publicDir));
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cinematch-shell-v1';
+const CACHE_NAME = 'cinematch-shell-v2';
 
 const APP_SHELL = [
   '/',
@@ -22,6 +22,7 @@ const APP_SHELL = [
   '/js/screens/swipe.js',
   '/js/screens/watchlist.js',
   '/js/screens/welcome.js',
+  '/js/screens/settings.js',
 ];
 
 self.addEventListener('install', (event) => {

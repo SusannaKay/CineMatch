@@ -7,7 +7,8 @@ import { renderSwipe } from './screens/swipe.js';
 import { renderResults } from './screens/results.js';
 import { renderSolo } from './screens/solo.js';
 import { renderSuggestion } from './screens/suggestion.js';
-import { renderWatchlist } from './screens/watchlist.js';
+import { renderWatchlist, refreshWatchlistScreen } from './screens/watchlist.js';
+import { initWatchlistSync, handleRemoteChange, onWatchlistChange, syncNow } from './watchlist.js';
 import { renderOnboarding } from './screens/onboarding.js';
 import { renderSettings } from './screens/settings.js';
 import './screens/details.js';
@@ -122,8 +123,14 @@ async function init() {
   registerServiceWorker();
   setupInstallPrompt();
   setupSettingsButton();
-  await fetchConfig();
-  getSocket();
+  // If the server is unreachable (app opened from the offline cache) keep going with local data.
+  await fetchConfig().catch(() => {});
+  const socket = getSocket();
+  // Watchlist sync (only does anything on devices where it was turned on in Settings).
+  socket.on('watchlist:changed', ({ rev } = {}) => handleRemoteChange(rev));
+  socket.on('connect', () => syncNow());
+  onWatchlistChange(() => { if (currentScreen === 'watchlist') refreshWatchlistScreen(); });
+  initWatchlistSync();
   onRoomState((room) => {
     if (room.status === 'lobby' && currentScreen !== 'filters') currentScreen = 'lobby';
     if (room.status === 'results') currentScreen = 'results';

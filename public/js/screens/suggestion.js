@@ -58,7 +58,7 @@ export function renderSuggestion(onNavigate) {
     const grid = document.createElement('div'); grid.className = 'grid grid-cols-2 gap-3'; container.appendChild(grid);
     movies.forEach((movie) => {
       const card = document.createElement('article'); card.className = 'match-card relative';
-      card.innerHTML = `<button class="w-full text-left"><img src="${movie.poster_path}" alt="${escapeHTML(movie.title)}" class="w-full aspect-[2/3] object-cover"><div class="p-3"><h4 class="font-bold text-sm truncate">${escapeHTML(movie.title)}</h4><p class="text-xs text-slate-500 mt-1">${movie.release_date?.substring(0,4) || 'N/A'} · ⭐ ${movie.vote_average}</p></div></button><button class="save-btn absolute top-2 right-2 w-9 h-9 rounded-full bg-slate-900/90 border border-slate-700">${hasInWatchlist(movie.id) ? '♥' : '♡'}</button>`;
+      card.innerHTML = `<button class="w-full text-left"><img src="${movie.poster_path}" alt="${escapeHTML(movie.title)}" class="w-full aspect-[2/3] object-cover"><div class="p-3"><h4 class="font-bold text-sm truncate">${escapeHTML(movie.title)}</h4><p class="text-xs text-slate-500 mt-1">${movie.release_date?.substring(0,4) || 'N/A'} · ⭐ ${movie.vote_average}</p></div></button><button class="save-btn absolute top-2 right-2 w-9 h-9 rounded-full bg-slate-900/90 border border-slate-700">${hasInWatchlist(movie.id, movie.mediaType) ? '♥' : '♡'}</button>`;
       card.querySelector('article > button');
       card.querySelector('.w-full').onclick = () => openDetails(movie);
       card.querySelector('.save-btn').onclick = (e) => { e.stopPropagation(); if (addToWatchlist(movie)) { e.currentTarget.textContent = '♥'; showToast('Saved to Watchlist'); } else showToast('Already in Watchlist'); };

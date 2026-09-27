@@ -10,6 +10,10 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY server ./server
 COPY public ./public
 
+# Synced watchlist lives here; docker-compose.yml bind-mounts ./data over it so it survives rebuilds.
+ENV DATA_DIR=/app/data
+RUN mkdir -p /app/data && chown node:node /app/data
+
 USER node
 EXPOSE 3000
 

@@ -61,6 +61,7 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 - **Mark as watched**: track which saved titles you've already watched instead of just deleting them.
 - **Export**: copy the whole Watchlist as Markdown text, or download it as JSON (backup/reuse) or as a shareable PNG image card.
 - **Surprise me**: still can't decide? Pick a random title from your (filtered) Watchlist and jump straight to its details.
+- **Server sync (opt-in)**: turn it on in Settings on your own devices to share one Watchlist between phone and computer; it keeps working offline and is exposed read-only at `GET /api/watchlist` (e.g. for a home dashboard).
 
 ### 🎬 Title details & data
 
@@ -146,6 +147,18 @@ The Watchlist is local to the browser and persists between sessions using `local
 - **Export** — the "Export" menu lets you copy the whole Watchlist as Markdown text (handy to paste in a chat), download it as JSON (for backup or reuse), or download a shareable PNG image card.
 - **Surprise me** — still can't decide? Hit **Surprise me** to have CineMatch pick a random title from your current filter for you.
 - The stats line always shows a quick count and average rating for whatever's currently in view.
+
+#### Syncing the Watchlist with the server (opt-in)
+
+CineMatch is a group app, so by default every device keeps its **own** local Watchlist and the server knows nothing about it. The server owner can turn on **Settings → Watchlist sync → Sync this device** on their own devices to share **one** Watchlist, stored on the server, between all of them. Guests should leave it off: every synced device writes into the same list.
+
+- **Off (default)** — nothing changes: the list lives only in `localStorage` and no request is ever sent.
+- **Turning it on** — the list already on the device is merged into the server's list: same title (same TMDB id and type) means the same entry, so there are no duplicates; tags are combined and a title stays "watched" if it was marked on either side. Nothing is deleted on either side.
+- **While on** — adding, removing, marking as watched/to watch, and adding/removing tags are all sent to the server. `localStorage` stays the working copy, so the app responds instantly. Other synced devices get the change within a second (the server pushes a `watchlist:changed` Socket.IO event; they also resync when the app regains focus, on reconnect, and every 60 seconds).
+- **Offline** — if the server can't be reached the app keeps working on the local copy. Changes are queued (also in `localStorage`, so they survive a reload) and sent automatically as soon as the server is back (retried with backoff, on reconnect, and on focus). The Watchlist header shows *Offline · N pending* in the meantime.
+- **Conflicts** — each change carries its timestamp and the latest change wins, per title and per field (`watched`, `tags`). A title removed on one device isn't brought back by an older, still-queued change from another, and vice versa.
+- **Turning it off** — the current list stays on the device as a local-only list; the server copy is not touched.
+- **Storage** — the server keeps the list in `data/watchlist.json` (`DATA_DIR`, bind-mounted in Docker; see [Running with Docker](#-running-with-docker)). Writes are validated (unknown fields dropped, strings and lists size-capped, max 2,000 titles), serialized, and atomic (temp file + rename). A corrupt file is set aside as `watchlist.json.corrupt-<timestamp>` and the app starts with an empty synced list instead of crashing.
 
 ### Settings
 
@@ -347,6 +360,14 @@ docker compose down             # stop and remove the container
 
 > Rooms live in memory only, so restarting or updating the container clears every room, persistent ones included.
 
+**Persistent data.** The only data CineMatch writes to disk is the synced Watchlist, `watchlist.json`. The compose file bind-mounts `./data` (next to `docker-compose.yml`, ignored by git) to `/app/data` in the container, so it survives restarts, rebuilds and `git pull` updates. The container runs as the `node` user (uid 1000), so the folder must be writable by that uid:
+
+```bash
+mkdir -p data && sudo chown 1000:1000 data
+```
+
+If it isn't writable the app still starts and serves everything, including `GET /api/watchlist`; only sync writes fail (HTTP 503), and devices keep their changes queued until the permissions are fixed. Back up the Watchlist by copying `data/watchlist.json`.
+
 ## ⚙️ Configuration
 
 The main server configuration includes:
@@ -386,6 +407,94 @@ Returns similar titles for a selected movie or TV show. This powers Suggestion m
 ### `POST /api/discover`
 
 Builds a personalized discovery deck from the selected filters, including a `region` field. This powers Solo mode.
+
+### `GET /api/watchlist?limit=<n>`
+
+Read-only, unauthenticated JSON view of the **synced** Watchlist (the one shared by devices with sync turned on — see [Syncing the Watchlist](#syncing-the-watchlist-with-the-server-opt-in)). Meant for server-side consumers such as a home dashboard, e.g. `http://<host>:8086/api/watchlist?limit=10`. It never includes API keys and sends `Cache-Control: no-store`.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `limit`   | no       | Positive integer: return at most this many titles (the most recent ones). Values above `500` are capped to `500`. Anything else → `400 {"error":"invalid_limit"}`. Default: all titles. |
+
+Items are sorted by `addedAt`, **newest first**.
+
+**Response contract (version 1).** The shape is stable: fields won't be renamed, removed or change type while `version` is `1`; new fields may be added, so ignore those you don't know.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | number | Contract version, currently `1`. |
+| `updatedAt` | string \| null | ISO 8601 time of the last change to the synced list (`null` if never written). |
+| `total` | number | Number of titles in the synced list. |
+| `count` | number | Number of titles in `items` (≤ `total` when `limit` is used). |
+| `items[].tmdbId` | number | TMDB id. Together with `type` it identifies the title. |
+| `items[].type` | `"movie"` \| `"tv"` | Movie or TV show (anime and documentaries are one of the two). |
+| `items[].title` | string | Title, in the language of the region it was saved from. |
+| `items[].year` | number \| null | Release year (first air year for TV). |
+| `items[].posterUrl` | string \| null | Full HTTPS poster URL, ready for an `<img src>` (a placeholder image URL if TMDB has no poster; `null` only if the client sent none). |
+| `items[].addedAt` | string | ISO 8601 time the title was added to the list. For titles saved before sync was turned on, the time they were first synced. |
+| `items[].releaseDate` | string \| null | `YYYY-MM-DD` release / first air date. |
+| `items[].overview` | string \| null | Plot summary. |
+| `items[].genres` | string[] | Genre names (may be empty). |
+| `items[].runtime` | number \| null | Runtime in minutes (episode runtime for TV). |
+| `items[].rating` | number \| null | TMDB average rating, 0–10. |
+| `items[].director` | string \| null | Director (creator for TV). |
+| `items[].backdropUrl` | string \| null | Full HTTPS backdrop image URL. |
+| `items[].watched` | boolean | Marked as watched. |
+| `items[].tags` | string[] | The user's own tags. |
+| `items[].tmdbUrl` | string | Link to the title's TMDB page. |
+
+Example — `curl -s 'http://192.168.1.177:8086/api/watchlist?limit=2'` (real output, captured from a server running in mock-data mode, so ids are the demo ones; with TMDB enabled `tmdbId`, titles, posters and genres are TMDB's, localized to the region the title was saved from):
+
+```json
+{
+  "version": 1,
+  "updatedAt": "2026-09-27T15:04:45.696Z",
+  "total": 2,
+  "count": 2,
+  "items": [
+    {
+      "tmdbId": 9,
+      "type": "movie",
+      "title": "Pulp Fiction",
+      "year": 1994,
+      "posterUrl": "https://image.tmdb.org/t/p/w600_and_h900_bestv2/d5iIlFn5s0ImszYzBPb8SPCPb1s.jpg",
+      "addedAt": "2026-09-27T15:04:45.693Z",
+      "releaseDate": "1994-09-10",
+      "overview": "Four intersecting tales of violence and redemption across Los Angeles.",
+      "genres": ["Crime", "Drama"],
+      "runtime": 154,
+      "rating": 8.9,
+      "director": "Quentin Tarantino",
+      "backdropUrl": "https://image.tmdb.org/t/p/w780/d5iIlFn5s0ImszYzBPb8SPCPb1s.jpg",
+      "watched": false,
+      "tags": ["weekend"],
+      "tmdbUrl": "https://www.themoviedb.org/movie/9"
+    },
+    {
+      "tmdbId": 1,
+      "type": "movie",
+      "title": "Inception",
+      "year": 2010,
+      "posterUrl": "https://image.tmdb.org/t/p/w600_and_h900_bestv2/edv5CZvWj09upOsy2Y6IwObsVNl.jpg",
+      "addedAt": "2026-09-20T15:04:45.693Z",
+      "releaseDate": "2010-07-15",
+      "overview": "A skilled thief who steals secrets from people's minds while they dream takes on one impossible job.",
+      "genres": ["Science Fiction", "Action", "Thriller"],
+      "runtime": 148,
+      "rating": 8.8,
+      "director": "Christopher Nolan",
+      "backdropUrl": "https://image.tmdb.org/t/p/w780/edv5CZvWj09upOsy2Y6IwObsVNl.jpg",
+      "watched": true,
+      "tags": [],
+      "tmdbUrl": "https://www.themoviedb.org/movie/1"
+    }
+  ]
+}
+```
+
+### `POST /api/watchlist/sync`
+
+Internal endpoint used by devices with sync turned on: the body `{ "ops": [...] }` carries up to 200 queued changes (`add`, `remove`, `update`), the response is the full synced list. Not part of the public contract.
 
 ## 🎮 Multiplayer Events
 
