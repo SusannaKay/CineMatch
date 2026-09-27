@@ -6,16 +6,16 @@
 // applied one after the other against the latest state.
 //
 // Conflict rules (last-writer-wins on client timestamps, clamped to server time):
-//   add    → inserts the title; if it already exists, tags are unioned and watched is OR-ed
+//   add    → inserts the title; if it already exists, watched is OR-ed
 //            (nothing is ever lost when two lists are merged). Ignored if the title was
 //            removed *after* the add happened (tombstone newer than the op).
 //   remove → deletes the title and leaves a tombstone; ignored if the title was (re)added
 //            after the remove happened.
-//   update → per-field (watched, tags) last-writer-wins.
+//   update → last-writer-wins on the watched flag.
 
 import fs from 'fs/promises';
 import path from 'path';
-import { sanitizeItem, sanitizeTags, itemKey, LIMITS } from './validate.js';
+import { sanitizeItem, itemKey, LIMITS } from './validate.js';
 
 const FILE_VERSION = 1;
 const TOMBSTONE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
@@ -39,10 +39,7 @@ function parseState(raw) {
     const item = sanitizeItem(stored);
     if (!item) continue;
     item.addedAt = Number.isFinite(stored.addedAt) ? stored.addedAt : Date.now();
-    item.fieldTs = {
-      watched: Number(stored.fieldTs?.watched) || item.addedAt,
-      tags: Number(stored.fieldTs?.tags) || item.addedAt,
-    };
+    item.fieldTs = { watched: Number(stored.fieldTs?.watched) || item.addedAt };
     state.items[itemKey(item)] = item;
   }
   for (const [key, ts] of Object.entries(data.tombstones || {})) {
@@ -165,18 +162,15 @@ function applyOne(state, op, now) {
     const key = itemKey(item);
     const existing = state.items[key];
     if (existing) {
-      const tags = sanitizeTags([...existing.tags, ...item.tags]);
-      const watched = existing.watched || item.watched;
-      if (tags.length === existing.tags.length && watched === existing.watched) return 'ignored';
-      existing.tags = tags;
-      existing.watched = watched;
-      existing.fieldTs = { watched: Math.max(existing.fieldTs.watched, ts), tags: Math.max(existing.fieldTs.tags, ts) };
+      if (!item.watched || existing.watched) return 'ignored';
+      existing.watched = true;
+      existing.fieldTs = { watched: Math.max(existing.fieldTs.watched, ts) };
       return 'applied';
     }
     if ((state.tombstones[key] || 0) > ts) return 'ignored';
     if (Object.keys(state.items).length >= LIMITS.maxItems) return 'rejected';
     const addedAt = Number.isFinite(op.item.addedAt) ? clampTs(op.item.addedAt, now) : ts;
-    state.items[key] = { ...item, addedAt, fieldTs: { watched: ts, tags: ts } };
+    state.items[key] = { ...item, addedAt, fieldTs: { watched: ts } };
     delete state.tombstones[key];
     return 'applied';
   }
@@ -198,7 +192,6 @@ function applyOne(state, op, now) {
     const patch = op.patch;
     if (!patch || typeof patch !== 'object') return 'rejected';
     if ('watched' in patch && typeof patch.watched !== 'boolean') return 'rejected';
-    if ('tags' in patch && !Array.isArray(patch.tags)) return 'rejected';
     if (!existing) return 'ignored';
     let changed = false;
     if ('watched' in patch) {
@@ -206,14 +199,6 @@ function applyOne(state, op, now) {
         changed ||= existing.watched !== patch.watched;
         existing.watched = patch.watched;
         existing.fieldTs.watched = ts;
-      }
-    }
-    if ('tags' in patch) {
-      if (ts >= existing.fieldTs.tags) {
-        const tags = sanitizeTags(patch.tags);
-        changed ||= JSON.stringify(tags) !== JSON.stringify(existing.tags);
-        existing.tags = tags;
-        existing.fieldTs.tags = ts;
       }
     }
     return changed ? 'applied' : 'ignored';

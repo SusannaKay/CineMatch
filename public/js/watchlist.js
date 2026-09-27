@@ -31,7 +31,9 @@ function writeJSON(key, value) {
 
 function load() {
   const parsed = readJSON(STORAGE_KEY, []);
-  return Array.isArray(parsed) ? parsed : [];
+  if (!Array.isArray(parsed)) return [];
+  // Tags were removed from the app: drop leftovers from older versions.
+  return parsed.map(({ tags, ...movie }) => movie);
 }
 
 let movies = load();
@@ -70,7 +72,8 @@ export function hasInWatchlist(id, mediaType) {
 
 export function addToWatchlist(movie) {
   if (!movie || movie.id == null || hasInWatchlist(movie.id, typeOf(movie))) return false;
-  const item = { ...movie, tags: [], watched: false, addedAt: Date.now() };
+  const { tags, ...rest } = movie;
+  const item = { ...rest, watched: false, addedAt: Date.now() };
   movies.push(item);
   saveMovies();
   enqueue({ type: 'add', item });
@@ -86,7 +89,7 @@ export function removeFromWatchlist(id, mediaType) {
   return true;
 }
 
-/** Merges a partial update (tags, watched, ...) into a saved title. */
+/** Merges a partial update (e.g. { watched }) into a saved title. */
 export function updateWatchlistItem(id, patch, mediaType) {
   const movie = movies.find((m) => matches(m, id, mediaType));
   if (!movie) return false;
@@ -94,7 +97,6 @@ export function updateWatchlistItem(id, patch, mediaType) {
   saveMovies();
   const synced = {};
   if ('watched' in patch) synced.watched = !!patch.watched;
-  if ('tags' in patch) synced.tags = [...(patch.tags || [])];
   if (Object.keys(synced).length) enqueue({ type: 'update', key: keyOf(movie), patch: synced });
   return true;
 }
@@ -128,7 +130,6 @@ function applyLocally(list, op) {
   if (op.type === 'add') {
     const existing = list.find((m) => keyOf(m) === keyOf(op.item));
     if (!existing) return [...list, { ...op.item }];
-    existing.tags = [...new Set([...(existing.tags || []), ...(op.item.tags || [])])];
     existing.watched = !!(existing.watched || op.item.watched);
     return list;
   }
@@ -216,7 +217,7 @@ function dropSent(batch) {
 
 /**
  * Turns sync on for this device. The local list is merged into the server's one
- * (union by TMDB id + type; tags unioned, "watched" kept if set on either side).
+ * (union by TMDB id + type; "watched" kept if set on either side).
  */
 export async function enableSync() {
   if (syncEnabled) return syncNow();

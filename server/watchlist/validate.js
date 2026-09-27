@@ -5,8 +5,6 @@
 export const LIMITS = {
   maxItems: 2000,
   maxOpsPerRequest: 200,
-  maxTags: 20,
-  maxTagLength: 32,
 };
 
 const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
@@ -24,11 +22,6 @@ function url(v) {
 function strList(v, maxItems, maxLen) {
   if (!Array.isArray(v)) return [];
   return v.map((s) => str(s, maxLen)).filter(Boolean).slice(0, maxItems);
-}
-
-export function sanitizeTags(tags) {
-  if (!Array.isArray(tags)) return [];
-  return [...new Set(tags.map((t) => str(t, LIMITS.maxTagLength)).filter(Boolean))].slice(0, LIMITS.maxTags);
 }
 
 export function itemKey(item) {
@@ -74,7 +67,6 @@ export function sanitizeItem(raw) {
     cast: strList(raw.cast, 10, 100),
     providers,
     trailerKey,
-    tags: sanitizeTags(raw.tags),
     watched: raw.watched === true,
   };
 }
@@ -98,7 +90,6 @@ export function toPublicItem(item) {
     director: item.director,
     backdropUrl: item.backdrop_path,
     watched: item.watched,
-    tags: item.tags,
     tmdbUrl: `https://www.themoviedb.org/${item.mediaType}/${item.id}`,
   };
 }

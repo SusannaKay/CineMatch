@@ -12,9 +12,8 @@ function downloadBlob(blob, filename) {
 function itemLine(movie) {
   const type = movie.mediaType === 'tv' ? 'TV Show' : 'Movie';
   const year = movie.release_date?.substring(0, 4) || 'N/A';
-  const tags = movie.tags?.length ? ` — 🏷 ${movie.tags.join(', ')}` : '';
   const watched = movie.watched ? ' ✅' : '';
-  return `- **${movie.title}** (${year}) — ⭐ ${movie.vote_average} — ${type}${watched}${tags}`;
+  return `- **${movie.title}** (${year}) — ⭐ ${movie.vote_average} — ${type}${watched}`;
 }
 
 export function buildMarkdown(movies) {
@@ -121,12 +120,6 @@ export async function exportAsImage(movies, { limit = 12 } = {}) {
     ctx.fillStyle = '#facc15';
     ctx.font = 'bold 18px Inter, sans-serif';
     ctx.fillText(`⭐ ${movie.vote_average}`, textX, y + 94);
-
-    if (movie.tags?.length) {
-      ctx.fillStyle = '#e11d48';
-      ctx.font = '600 14px Inter, sans-serif';
-      ctx.fillText(`🏷 ${movie.tags.join(', ')}`, textX + 90, y + 94);
-    }
   });
 
   if (extra > 0) {

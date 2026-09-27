@@ -195,4 +195,22 @@ export async function getRecommendations(id, mediaType, region) {
   return sortByRating(enriched);
 }
 
+/** Full details of one title (same shape as deck items), or null if TMDB doesn't know it. */
+export async function getTitle(id, mediaType, region) {
+  const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+  if (config.useMockData) {
+    const movie = mockMovies.find((m) => String(m.id) === String(id));
+    return movie ? { ...movie } : null;
+  }
+  const safeRegion = sanitizeRegion(region);
+  let details;
+  try {
+    details = await tmdbFetch(`/${endpoint}/${id}`, safeRegion);
+  } catch (err) {
+    if (err.message === 'TMDB 404') return null;
+    throw err;
+  }
+  return enrichMovie(details, endpoint, safeRegion);
+}
+
 export { config as tmdbConfig };

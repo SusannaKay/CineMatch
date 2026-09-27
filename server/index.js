@@ -6,7 +6,7 @@ import { networkInterfaces } from 'os';
 import { Server } from 'socket.io';
 import { config } from './config.js';
 import { RoomManager } from './rooms/RoomManager.js';
-import { buildDeck, searchMulti, getRecommendations, tmdbConfig } from './services/tmdb.js';
+import { buildDeck, searchMulti, getRecommendations, getTitle, tmdbConfig } from './services/tmdb.js';
 import { WatchlistStore } from './watchlist/store.js';
 import { watchlistRouter } from './watchlist/routes.js';
 
@@ -46,6 +46,18 @@ app.get('/api/recommendations', async (req, res) => {
   const mediaType = String(req.query.mediaType || 'movie');
   if (!Number.isInteger(id) || id <= 0 || !['movie', 'tv'].includes(mediaType)) return res.status(400).json({ error: 'invalid_title' });
   try { res.json(await getRecommendations(id, mediaType, req.query.region)); } catch (err) { console.error(err); res.status(500).json({ error: 'recommendations_failed' }); }
+});
+
+// Full details of a single title: used to add a title to the Watchlist straight from a search.
+app.get('/api/title', async (req, res) => {
+  const id = Number(req.query.id);
+  const mediaType = String(req.query.mediaType || 'movie');
+  if (!Number.isSafeInteger(id) || id <= 0 || !['movie', 'tv'].includes(mediaType)) return res.status(400).json({ error: 'invalid_title' });
+  try {
+    const title = await getTitle(id, mediaType, req.query.region);
+    if (!title) return res.status(404).json({ error: 'not_found' });
+    res.json(title);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'title_failed' }); }
 });
 
 app.post('/api/discover', async (req, res) => {

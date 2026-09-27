@@ -56,8 +56,8 @@ It is designed for one simple problem: *"What should we watch tonight?"*
 
 - Keep, inspect, sort, and remove titles you've saved from Solo or Suggestion mode — persisted locally across sessions.
 - Sort saved titles by the order you added them or by rating (ascending/descending).
-- Search saved titles by name and filter by content type (All / Movies / TV Shows), watched status, or custom tags, with a live count and average rating.
-- **Tags**: organize saved titles with your own free-form tags (e.g. "date night", "watch together").
+- Search saved titles by name and filter by content type (All / Movies / TV Shows) or watched status, with a live count and average rating.
+- **Add a title directly**: someone recommended a movie or show? Tap **+ Add** in the Watchlist, search it by name and save it — no swiping needed.
 - **Mark as watched**: track which saved titles you've already watched instead of just deleting them.
 - **Export**: copy the whole Watchlist as Markdown text, or download it as JSON (backup/reuse) or as a shareable PNG image card.
 - **Surprise me**: still can't decide? Pick a random title from your (filtered) Watchlist and jump straight to its details.
@@ -142,7 +142,7 @@ Every room tracks how many sessions it has hosted, how many titles were swiped, 
 The Watchlist is local to the browser and persists between sessions using `localStorage`. Titles can be saved from Solo or Suggestion mode and removed at any time.
 
 - **Search & filter** — use the search box, the type chips (All / Movies / TV Shows), and the "To watch / Watched" status chips to narrow down a long list.
-- **Tags** — add free-form tags to any saved title (e.g. "date night", "watch together") via the "+ tag" button; click the tag chips above the list to filter by one.
+- **Add a title** — tap **+ Add** at the top of the Watchlist, type a movie or TV show name and hit **Add** next to the right result. CineMatch fetches its full details (poster, overview, genres, runtime, rating, streaming providers) and saves it, exactly like a title liked in Solo; titles already saved show **Saved**. If the details can't be loaded right then, the title is still saved with its name, year and poster.
 - **Mark as watched** — toggle a title as watched instead of removing it, so you keep a record of what you've already seen.
 - **Export** — the "Export" menu lets you copy the whole Watchlist as Markdown text (handy to paste in a chat), download it as JSON (for backup or reuse), or download a shareable PNG image card.
 - **Surprise me** — still can't decide? Hit **Surprise me** to have CineMatch pick a random title from your current filter for you.
@@ -153,10 +153,10 @@ The Watchlist is local to the browser and persists between sessions using `local
 CineMatch is a group app, so by default every device keeps its **own** local Watchlist and the server knows nothing about it. The server owner can turn on **Settings → Watchlist sync → Sync this device** on their own devices to share **one** Watchlist, stored on the server, between all of them. Guests should leave it off: every synced device writes into the same list.
 
 - **Off (default)** — nothing changes: the list lives only in `localStorage` and no request is ever sent.
-- **Turning it on** — the list already on the device is merged into the server's list: same title (same TMDB id and type) means the same entry, so there are no duplicates; tags are combined and a title stays "watched" if it was marked on either side. Nothing is deleted on either side.
-- **While on** — adding, removing, marking as watched/to watch, and adding/removing tags are all sent to the server. `localStorage` stays the working copy, so the app responds instantly. Other synced devices get the change within a second (the server pushes a `watchlist:changed` Socket.IO event; they also resync when the app regains focus, on reconnect, and every 60 seconds).
+- **Turning it on** — the list already on the device is merged into the server's list: same title (same TMDB id and type) means the same entry, so there are no duplicates; a title stays "watched" if it was marked on either side. Nothing is deleted on either side.
+- **While on** — adding (from Solo, Suggestion or **+ Add**), removing and marking as watched/to watch are all sent to the server. `localStorage` stays the working copy, so the app responds instantly. Other synced devices get the change within a second (the server pushes a `watchlist:changed` Socket.IO event; they also resync when the app regains focus, on reconnect, and every 60 seconds).
 - **Offline** — if the server can't be reached the app keeps working on the local copy. Changes are queued (also in `localStorage`, so they survive a reload) and sent automatically as soon as the server is back (retried with backoff, on reconnect, and on focus). The Watchlist header shows *Offline · N pending* in the meantime.
-- **Conflicts** — each change carries its timestamp and the latest change wins, per title and per field (`watched`, `tags`). A title removed on one device isn't brought back by an older, still-queued change from another, and vice versa.
+- **Conflicts** — each change carries its timestamp and the latest change wins, per title (and for the `watched` flag). A title removed on one device isn't brought back by an older, still-queued change from another, and vice versa.
 - **Turning it off** — the current list stays on the device as a local-only list; the server copy is not touched.
 - **Storage** — the server keeps the list in `data/watchlist.json` (`DATA_DIR`, bind-mounted in Docker; see [Running with Docker](#-running-with-docker)). Writes are validated (unknown fields dropped, strings and lists size-capped, max 2,000 titles), serialized, and atomic (temp file + rename). A corrupt file is set aside as `watchlist.json.corrupt-<timestamp>` and the app starts with an empty synced list instead of crashing.
 
@@ -223,7 +223,7 @@ CineMatch uses a lightweight Node.js backend that serves the frontend, proxies T
 - **Socket.IO** handles room state, player connections, voting, and real-time synchronization.
 - **RoomManager** manages multiplayer rooms and their lifecycle, including persistent rooms, reconnect grace periods, host handover, and group stats.
 - **TMDB service** builds discovery decks, searches titles, fetches recommendations, and enriches titles with providers, trailers, and (via OMDB, when configured) IMDb/Rotten Tomatoes/Metacritic ratings — all localized to the caller's selected region.
-- **Watchlist module** stores saved titles, tags, and watched status locally in the browser.
+- **Watchlist module** stores saved titles and their watched status locally in the browser (optionally synced with the server).
 - **Ignored-titles module** stores permanently hidden title IDs locally in the browser.
 - **Mock data** provides a local fallback when TMDB is not configured.
 
@@ -249,7 +249,7 @@ CineMatch uses a lightweight Node.js backend that serves the frontend, proxies T
 | **Font Awesome** *(CDN)* | Icons |
 | **qrcodejs** *(CDN)* | QR code generation for multiplayer room invites |
 | **Web App Manifest + Service Worker** | Installable app (PWA) with offline-capable app shell |
-| **localStorage** | Local Watchlist (with tags/watched status), ignored-titles list, region, and nickname persistence |
+| **localStorage** | Local Watchlist (with watched status), ignored-titles list, region, and nickname persistence |
 
 **External APIs**
 
@@ -408,6 +408,10 @@ Returns similar titles for a selected movie or TV show. This powers Suggestion m
 
 Builds a personalized discovery deck from the selected filters, including a `region` field. This powers Solo mode.
 
+### `GET /api/title?id=<id>&mediaType=<movie|tv>&region=<US|GB|IT|...>`
+
+Returns the full details of one title (same shape as a discovery deck item: poster, overview, genres, runtime, rating, cast, providers, trailer…). Powers **+ Add** in the Watchlist, which searches with `/api/search` and then fetches the chosen title here. `404 {"error":"not_found"}` if TMDB doesn't know the title.
+
 ### `GET /api/watchlist?limit=<n>`
 
 Read-only, unauthenticated JSON view of the **synced** Watchlist (the one shared by devices with sync turned on — see [Syncing the Watchlist](#syncing-the-watchlist-with-the-server-opt-in)). Meant for server-side consumers such as a home dashboard, e.g. `http://<host>:8086/api/watchlist?limit=10`. It never includes API keys and sends `Cache-Control: no-store`.
@@ -418,7 +422,7 @@ Read-only, unauthenticated JSON view of the **synced** Watchlist (the one shared
 
 Items are sorted by `addedAt`, **newest first**.
 
-**Response contract (version 1).** The shape is stable: fields won't be renamed, removed or change type while `version` is `1`; new fields may be added, so ignore those you don't know.
+**Response contract (version 1).** The shape is stable: fields won't be renamed, removed or change type while `version` is `1`; new fields may be added, so ignore those you don't know. (The early `tags` field was dropped together with the tagging feature, before any consumer used it.)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -440,7 +444,6 @@ Items are sorted by `addedAt`, **newest first**.
 | `items[].director` | string \| null | Director (creator for TV). |
 | `items[].backdropUrl` | string \| null | Full HTTPS backdrop image URL. |
 | `items[].watched` | boolean | Marked as watched. |
-| `items[].tags` | string[] | The user's own tags. |
 | `items[].tmdbUrl` | string | Link to the title's TMDB page. |
 
 Example — `curl -s 'http://192.168.1.177:8086/api/watchlist?limit=2'` (real output, captured from a server running in mock-data mode, so ids are the demo ones; with TMDB enabled `tmdbId`, titles, posters and genres are TMDB's, localized to the region the title was saved from):
@@ -467,7 +470,6 @@ Example — `curl -s 'http://192.168.1.177:8086/api/watchlist?limit=2'` (real ou
       "director": "Quentin Tarantino",
       "backdropUrl": "https://image.tmdb.org/t/p/w780/d5iIlFn5s0ImszYzBPb8SPCPb1s.jpg",
       "watched": false,
-      "tags": ["weekend"],
       "tmdbUrl": "https://www.themoviedb.org/movie/9"
     },
     {
@@ -485,7 +487,6 @@ Example — `curl -s 'http://192.168.1.177:8086/api/watchlist?limit=2'` (real ou
       "director": "Christopher Nolan",
       "backdropUrl": "https://image.tmdb.org/t/p/w780/edv5CZvWj09upOsy2Y6IwObsVNl.jpg",
       "watched": true,
-      "tags": [],
       "tmdbUrl": "https://www.themoviedb.org/movie/1"
     }
   ]

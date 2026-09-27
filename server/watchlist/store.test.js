@@ -12,22 +12,21 @@ test('add, update, remove and persistence across restarts', async () => {
   const dir = await tmpDir();
   const store = await new WatchlistStore(dir).init();
   await store.applyOps([{ type: 'add', item: movie(1), ts: 1000 }, { type: 'add', item: movie(2), ts: 2000 }]);
-  await store.applyOps([{ type: 'update', key: 'movie:1', patch: { watched: true, tags: ['sci-fi'] }, ts: 3000 }]);
+  await store.applyOps([{ type: 'update', key: 'movie:1', patch: { watched: true }, ts: 3000 }]);
   await store.applyOps([{ type: 'remove', key: 'movie:2', ts: 4000 }]);
   const reopened = await new WatchlistStore(dir).init();
   const items = reopened.list();
   assert.equal(items.length, 1);
   assert.equal(items[0].watched, true);
-  assert.deepEqual(items[0].tags, ['sci-fi']);
+  assert.equal(items[0].tags, undefined);
 });
 
-test('merge on add: no duplicates, tags unioned, watched kept', async () => {
+test('merge on add: no duplicates, watched kept', async () => {
   const store = await new WatchlistStore(await tmpDir()).init();
-  await store.applyOps([{ type: 'add', item: movie(1, { tags: ['a'], watched: true }), ts: 1000 }]);
-  await store.applyOps([{ type: 'add', item: movie(1, { tags: ['b'], watched: false }), ts: 2000 }]);
+  await store.applyOps([{ type: 'add', item: movie(1, { watched: true }), ts: 1000 }]);
+  await store.applyOps([{ type: 'add', item: movie(1, { watched: false }), ts: 2000 }]);
   const [item] = store.list();
   assert.equal(store.list().length, 1);
-  assert.deepEqual(item.tags, ['a', 'b']);
   assert.equal(item.watched, true);
 });
 
@@ -85,4 +84,12 @@ test('corrupt file does not crash: starts empty and keeps a backup', async () =>
   assert.ok(files.some((f) => f.startsWith('watchlist.json.corrupt-')));
   await store.applyOps([{ type: 'add', item: movie(1), ts: 1 }]);
   assert.equal((await new WatchlistStore(dir).init()).list().length, 1);
+});
+
+test('tags from older clients are dropped, not stored', async () => {
+  const store = await new WatchlistStore(await tmpDir()).init();
+  await store.applyOps([{ type: 'add', item: movie(1, { tags: ['x'] }), ts: 1 }]);
+  const res = await store.applyOps([{ type: 'update', key: 'movie:1', patch: { tags: ['y'] }, ts: 2 }]);
+  assert.equal(res.rejected, 0);
+  assert.equal(store.list()[0].tags, undefined);
 });

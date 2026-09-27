@@ -1,5 +1,6 @@
 import { mountScreen, setHeaderBadge } from '../utils/dom.js';
-import { getWatchlist, removeFromWatchlist, updateWatchlistItem, getSyncStatus } from '../watchlist.js';
+import { getWatchlist, removeFromWatchlist, updateWatchlistItem, getSyncStatus, addToWatchlist, hasInWatchlist } from '../watchlist.js';
+import { appState } from '../state.js';
 import { openDetails } from './details.js';
 import { showToast } from '../socket.js';
 import { exportAsMarkdown, exportAsJSON, exportAsImage } from '../utils/export.js';
@@ -7,9 +8,7 @@ import { exportAsMarkdown, exportAsJSON, exportAsImage } from '../utils/export.j
 let sortMode = 'added';
 let typeFilter = 'all';
 let statusFilter = 'all';
-let tagFilter = null;
 let searchQuery = '';
-let addingTagFor = null;
 let renderedSignature = '';
 
 export function renderWatchlist(onNavigate) {
@@ -17,11 +16,14 @@ export function renderWatchlist(onNavigate) {
     <div class="flex-grow flex flex-col overflow-hidden">
       <div class="p-6 pb-3 flex items-center justify-between gap-3">
         <div><h2 class="text-2xl font-extrabold">Your Watchlist</h2><p class="text-sm text-slate-400 mt-1">Titles you've saved.<span id="sync-status" class="ml-1"></span></p></div>
-        <select id="sort-select" class="bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg px-2 py-2">
-          <option value="added">Date added</option>
-          <option value="rating-desc">Rating ↓</option>
-          <option value="rating-asc">Rating ↑</option>
-        </select>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <select id="sort-select" class="bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-lg px-2 py-2">
+            <option value="added">Date added</option>
+            <option value="rating-desc">Rating ↓</option>
+            <option value="rating-asc">Rating ↑</option>
+          </select>
+          <button id="btn-add-title" class="flex items-center gap-1.5 bg-primary text-white text-xs font-bold px-3 py-2 rounded-lg" aria-label="Add a title"><i class="fa-solid fa-plus"></i> Add</button>
+        </div>
       </div>
       <div class="px-6 pb-3 flex-shrink-0">
         <div class="relative mb-3">
@@ -43,11 +45,24 @@ export function renderWatchlist(onNavigate) {
             </div>
           </div>
         </div>
-        <div id="tag-filters" class="flex gap-2 flex-wrap mt-2"></div>
         <div id="watchlist-stats" class="text-xs text-slate-500 mt-3"></div>
       </div>
       <div id="watchlist-content" class="px-6 overflow-y-auto flex-grow pb-4"></div>
       <nav id="mode-nav" class="mode-nav flex-shrink-0 h-16 border-t border-slate-800 bg-slate-900/95"></nav>
+      <div id="add-panel" class="hidden absolute inset-0 z-30 bg-slate-900 flex flex-col">
+        <div class="p-6 pb-3 flex-shrink-0">
+          <div class="flex items-center justify-between mb-1">
+            <h2 class="text-2xl font-extrabold">Add a title</h2>
+            <button id="btn-close-add" class="text-slate-400 hover:text-white p-2 -mr-2" aria-label="Close"><i class="fa-solid fa-xmark text-xl"></i></button>
+          </div>
+          <p class="text-sm text-slate-400">Someone recommended something? Search it and save it straight to your Watchlist.</p>
+          <div class="relative mt-4">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input id="add-search" type="search" autocomplete="off" placeholder="Movie or TV show title..." class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-9 pr-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary">
+          </div>
+        </div>
+        <div id="add-results" class="px-6 overflow-y-auto flex-grow pb-6"></div>
+      </div>
     </div>
   `);
   setHeaderBadge(`${getWatchlist().length}`);
@@ -63,23 +78,23 @@ export function renderWatchlist(onNavigate) {
 
   screen.querySelector('#btn-surprise').onclick = () => surpriseMe(screen);
   wireExportMenu(screen);
+  wireAddPanel(screen);
 
   renderTypeFilters(screen);
   renderStatusFilters(screen);
-  renderTagFilters(screen);
   renderItems(screen);
   renderSyncStatus(screen);
 }
 
 /**
  * Called when the list or the sync status changes in the background (e.g. another device synced).
- * Re-renders only if the list really changed, keeps the scroll position, and never interrupts tag editing.
+ * Re-renders only if the list really changed, and keeps the scroll position.
  */
 export function refreshWatchlistScreen() {
   const screen = document.getElementById('screen-watchlist');
   if (!screen) return;
   renderSyncStatus(screen);
-  if (addingTagFor != null || JSON.stringify(getWatchlist()) === renderedSignature) return;
+  if (JSON.stringify(getWatchlist()) === renderedSignature) return;
   const content = screen.querySelector('#watchlist-content');
   const scrollTop = content.scrollTop;
   refresh(screen);
@@ -102,7 +117,6 @@ function renderSyncStatus(screen) {
 function refresh(screen) {
   renderTypeFilters(screen);
   renderStatusFilters(screen);
-  renderTagFilters(screen);
   renderItems(screen);
 }
 
@@ -158,26 +172,13 @@ function renderStatusFilters(screen) {
   });
 }
 
-function renderTagFilters(screen) {
-  const container = screen.querySelector('#tag-filters');
-  const tags = [...new Set(getWatchlist().flatMap((m) => m.tags || []))].sort();
-  if (!tags.length) { container.innerHTML = ''; return; }
-  container.innerHTML = tags.map((tag) => `
-    <button data-tag="${escapeHTML(tag)}" class="tag-filter-chip text-[11px] font-bold px-2.5 py-1 rounded-full border ${tagFilter === tag ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800/60 border-slate-700 text-slate-400'}"><i class="fa-solid fa-tag text-[9px] mr-1"></i>${escapeHTML(tag)}</button>
-  `).join('');
-  container.querySelectorAll('[data-tag]').forEach((btn) => {
-    btn.onclick = () => { tagFilter = tagFilter === btn.dataset.tag ? null : btn.dataset.tag; refresh(screen); };
-  });
-}
-
 function filteredMovies() {
   const q = searchQuery.trim().toLowerCase();
   return getWatchlist().filter((movie) => {
     const matchesType = typeFilter === 'all' || (movie.mediaType === 'tv' ? 'tv' : 'movie') === typeFilter;
     const matchesQuery = !q || (movie.title || '').toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'watched' ? !!movie.watched : !movie.watched);
-    const matchesTag = !tagFilter || (movie.tags || []).includes(tagFilter);
-    return matchesType && matchesQuery && matchesStatus && matchesTag;
+    return matchesType && matchesQuery && matchesStatus;
   });
 }
 
@@ -204,7 +205,7 @@ function renderItems(screen) {
   renderStats(screen, movies);
 
   if (!getWatchlist().length) {
-    container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8"><i class="fa-solid fa-bookmark text-4xl mb-4"></i><p class="font-semibold">Your Watchlist is empty.</p><p class="text-sm mt-2">Like something in Solo or save a suggestion.</p></div>';
+    container.innerHTML = '<div class="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8"><i class="fa-solid fa-bookmark text-4xl mb-4"></i><p class="font-semibold">Your Watchlist is empty.</p><p class="text-sm mt-2">Tap <b>+ Add</b> to save a title someone recommended, or like something in Solo or Suggestion.</p></div>';
     return;
   }
   if (!movies.length) {
@@ -214,17 +215,6 @@ function renderItems(screen) {
 
   container.innerHTML = '';
   movies.forEach((movie) => {
-    const tags = movie.tags || [];
-    const isAddingTag = String(addingTagFor) === String(movie.id);
-    const tagsHTML = `
-      <div class="flex flex-wrap items-center gap-1.5 mt-2">
-        ${tags.map((tag) => `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300"><i class="fa-solid fa-tag text-[8px]"></i>${escapeHTML(tag)}<button data-remove-tag="${escapeHTML(tag)}" class="opacity-60 hover:opacity-100 hover:text-rose-400">×</button></span>`).join('')}
-        ${isAddingTag
-          ? '<input class="tag-input bg-slate-900 border border-primary/50 rounded-full px-2 py-0.5 text-[11px] text-white w-24" maxlength="16" placeholder="new tag">'
-          : '<button class="add-tag-btn text-[10px] font-bold text-slate-500 border border-dashed border-slate-600 rounded-full px-2 py-0.5 hover:text-slate-300 hover:border-slate-400">+ tag</button>'}
-      </div>
-    `;
-
     const item = document.createElement('article');
     item.className = 'flex gap-3 p-3 mb-3 rounded-xl bg-slate-800 border border-slate-700 transition-colors';
     item.innerHTML = `
@@ -238,7 +228,6 @@ function renderItems(screen) {
             ${movie.watched ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-600/20 text-emerald-400"><i class="fa-solid fa-check"></i>Watched</span>' : ''}
           </div>
           <p class="text-xs text-yellow-400 font-semibold mt-2">⭐ ${movie.vote_average}</p>
-          ${tagsHTML}
         </div>
       </button>
       <div class="flex flex-col items-center gap-3 flex-shrink-0">
@@ -260,45 +249,106 @@ function renderItems(screen) {
       refresh(screen);
       setHeaderBadge(`${getWatchlist().length}`);
     };
-    item.querySelectorAll('[data-remove-tag]').forEach((btn) => {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        updateWatchlistItem(movie.id, { tags: tags.filter((t) => t !== btn.dataset.removeTag) }, movie.mediaType);
-        refresh(screen);
-      };
-    });
-    const addTagBtn = item.querySelector('.add-tag-btn');
-    if (addTagBtn) {
-      addTagBtn.onclick = (e) => { e.stopPropagation(); addingTagFor = movie.id; refresh(screen); };
-    }
-    wireTagInput(item, movie, tags, screen);
-
     container.appendChild(item);
   });
 }
 
-function wireTagInput(item, movie, tags, screen) {
-  const input = item.querySelector('.tag-input');
-  if (!input) return;
-  input.addEventListener('click', (e) => e.stopPropagation());
-  let done = false;
-  const commit = () => {
-    if (done) return; done = true;
-    const value = input.value.trim();
-    addingTagFor = null;
-    if (value) {
-      const nextTags = [...new Set([...tags, value])].slice(0, 8);
-      updateWatchlistItem(movie.id, { tags: nextTags }, movie.mediaType);
-    }
-    refresh(screen);
-  };
-  const cancel = () => { if (done) return; done = true; addingTagFor = null; refresh(screen); };
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+function wireAddPanel(screen) {
+  const panel = screen.querySelector('#add-panel');
+  const input = screen.querySelector('#add-search');
+  const results = screen.querySelector('#add-results');
+  let timer;
+  let lastQuery = '';
+
+  const open = () => { panel.classList.remove('hidden'); input.value = ''; results.innerHTML = ''; lastQuery = ''; requestAnimationFrame(() => input.focus()); };
+  const close = () => { clearTimeout(timer); panel.classList.add('hidden'); refresh(screen); setHeaderBadge(`${getWatchlist().length}`); };
+  screen.querySelector('#btn-add-title').onclick = open;
+  screen.querySelector('#btn-close-add').onclick = close;
+  input.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { results.innerHTML = ''; lastQuery = ''; return; }
+    results.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-circle-notch fa-spin text-xl"></i></div>';
+    timer = setTimeout(async () => {
+      lastQuery = q;
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&region=${appState.region}`);
+        if (!res.ok) throw new Error();
+        const found = await res.json();
+        if (lastQuery !== q) return; // a newer search is on its way
+        renderAddResults(results, found, screen);
+      } catch {
+        if (lastQuery === q) results.innerHTML = '<p class="text-center text-rose-400 py-8">Search failed. Check your connection and try again.</p>';
+      }
+    }, 400);
   });
-  input.addEventListener('blur', () => commit());
-  requestAnimationFrame(() => input.focus());
+}
+
+function renderAddResults(container, found, screen) {
+  if (!found.length) { container.innerHTML = '<p class="text-center text-slate-500 py-8">No titles found.</p>'; return; }
+  container.innerHTML = '';
+  found.forEach((result) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 p-2 mb-2 rounded-xl bg-slate-800 border border-slate-700';
+    const poster = result.poster_path
+      ? `<img src="${result.poster_path}" alt="" class="w-12 h-[72px] object-cover rounded-md flex-shrink-0">`
+      : '<div class="w-12 h-[72px] rounded-md bg-slate-700 flex items-center justify-center text-slate-500 flex-shrink-0"><i class="fa-solid fa-film"></i></div>';
+    row.innerHTML = `
+      ${poster}
+      <div class="min-w-0 flex-1">
+        <p class="font-bold truncate">${escapeHTML(result.title)}</p>
+        <p class="text-xs text-slate-400 mt-1"><i class="fa-solid ${result.mediaType === 'tv' ? 'fa-tv' : 'fa-film'} text-[10px] mr-1"></i>${result.mediaType === 'tv' ? 'TV Show' : 'Movie'}${result.year ? ` · ${escapeHTML(result.year)}` : ''}</p>
+      </div>
+      <button class="add-btn flex-shrink-0 text-xs font-bold px-3 py-2 rounded-lg"></button>
+    `;
+    const btn = row.querySelector('.add-btn');
+    const setSaved = () => { btn.disabled = true; btn.className = 'add-btn flex-shrink-0 text-xs font-bold px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400'; btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Saved'; };
+    if (hasInWatchlist(result.id, result.mediaType)) setSaved();
+    else {
+      btn.className = 'add-btn flex-shrink-0 text-xs font-bold px-3 py-2 rounded-lg bg-primary text-white';
+      btn.innerHTML = '<i class="fa-solid fa-plus mr-1"></i>Add';
+      btn.onclick = async () => {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+        const { movie, complete } = await fetchTitleDetails(result);
+        const added = addToWatchlist(movie);
+        setSaved();
+        refresh(screen);
+        setHeaderBadge(`${getWatchlist().length}`);
+        showToast(!added ? 'Already in Watchlist' : complete ? `"${movie.title}" added to Watchlist` : `"${movie.title}" added (details unavailable right now)`);
+      };
+    }
+    container.appendChild(row);
+  });
+}
+
+/** Full details from the server; if that fails, a minimal entry built from the search result. */
+async function fetchTitleDetails(result) {
+  try {
+    const res = await fetch(`/api/title?id=${result.id}&mediaType=${result.mediaType}&region=${appState.region}`);
+    if (!res.ok) throw new Error();
+    return { movie: await res.json(), complete: true };
+  } catch {
+    return {
+      complete: false,
+      movie: {
+        id: result.id,
+        mediaType: result.mediaType === 'tv' ? 'tv' : 'movie',
+        title: result.title,
+        overview: 'No overview available.',
+        poster_path: result.poster_path ? result.poster_path.replace('/t/p/w92/', '/t/p/w600_and_h900_bestv2/') : 'https://placehold.co/600x900/1e293b/ffffff?text=No+Poster',
+        backdrop_path: null,
+        release_date: result.year || null,
+        vote_average: 'N/A',
+        genres: [],
+        runtime: null,
+        cast: [],
+        providers: [],
+      },
+    };
+  }
 }
 
 function surpriseMe(screen) {
